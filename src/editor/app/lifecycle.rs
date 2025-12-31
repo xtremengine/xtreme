@@ -13,13 +13,13 @@ use crate::editor::gizmos::GizmoMode;
 use crate::editor::panels::Tool;
 use crate::editor::selection::SceneObject;
 use crate::editor::shortcuts::EditorAction;
-use crate::editor::viewport::Viewport;
+use crate::editor::viewport::{ObjectRenderData, Viewport};
 use crate::render::{App, AppEvent, EguiIntegration, IsometricCamera, RenderContext};
 
 impl EditorApp {
-    /// Get model matrices and colors for rendering (uses world transforms)
+    /// Get model matrices, colors, and textures for rendering (uses world transforms)
     /// Returns (regular_objects, camera_objects) - cameras are rendered separately as wireframes
-    pub fn get_render_data(&self) -> (Vec<(Mat4, [f32; 4])>, Vec<(Mat4, [f32; 4])>) {
+    pub fn get_render_data(&self) -> (Vec<ObjectRenderData>, Vec<(Mat4, [f32; 4])>) {
         let mut regular = Vec::new();
         let mut cameras = Vec::new();
 
@@ -31,12 +31,16 @@ impl EditorApp {
                 o.color
             };
             // Use world matrix to account for parent hierarchy
-            let data = (o.world_matrix(&self.scene_objects), color);
+            let model = o.world_matrix(&self.scene_objects);
 
             if o.camera.is_some() {
-                cameras.push(data);
+                cameras.push((model, color));
             } else {
-                regular.push(data);
+                regular.push(ObjectRenderData {
+                    model,
+                    color,
+                    texture_path: o.texture_path.clone(),
+                });
             }
         }
 
@@ -156,10 +160,20 @@ impl App for EditorApp {
         // Get render data (regular objects and cameras separately)
         let (regular_objects, camera_objects) = self.get_render_data();
 
+        // Preload textures into cache (must be done before render)
+        if let Some(viewport) = &mut self.viewport {
+            for obj in &regular_objects {
+                if let Some(ref path) = obj.texture_path {
+                    // This loads the texture into the cache if not already there
+                    viewport.get_or_load_texture(ctx, path);
+                }
+            }
+        }
+
         // Render viewport
         if let Some(viewport) = &self.viewport {
             // Render regular objects as cubes
-            viewport.render(ctx, &mut encoder, &self.camera, &regular_objects);
+            viewport.render_objects(ctx, &mut encoder, &self.camera, &regular_objects);
 
             // Render camera objects as wireframe pyramids
             viewport.render_camera_wireframes(ctx, &mut encoder, &self.camera, &camera_objects);

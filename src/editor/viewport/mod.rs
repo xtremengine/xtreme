@@ -14,12 +14,34 @@ mod types;
 #[allow(unused_imports)]
 pub use types::{GizmoUniforms, GridUniforms};
 
+use glam::Mat4;
+use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
 use super::gizmos::GizmoVertex;
-use crate::render::{GpuMesh, Mesh, RenderContext, Uniforms};
+use crate::render::{GpuMesh, Mesh, RenderContext, Texture, Uniforms};
 use textures::{create_depth_texture, create_render_texture};
 use types::{MAX_GIZMO_VERTICES, MAX_OBJECTS};
+
+/// Render data for an object
+#[derive(Clone)]
+pub struct ObjectRenderData {
+    /// Model matrix (world space)
+    pub model: Mat4,
+    /// Object color (RGBA)
+    pub color: [f32; 4],
+    /// Optional texture path
+    pub texture_path: Option<String>,
+}
+
+/// Cached texture data with bind group
+pub struct CachedTexture {
+    /// The loaded texture (kept alive for bind_group reference)
+    #[allow(dead_code)]
+    pub texture: Texture,
+    /// Bind group for this texture
+    pub bind_group: wgpu::BindGroup,
+}
 
 /// 3D viewport for the editor
 pub struct Viewport {
@@ -41,7 +63,7 @@ pub struct Viewport {
     pub(crate) grid_uniform_buffer: wgpu::Buffer,
     /// Grid bind group
     pub(crate) grid_bind_group: wgpu::BindGroup,
-    /// Mesh pipeline
+    /// Mesh pipeline (non-textured)
     pub(crate) mesh_pipeline: wgpu::RenderPipeline,
     /// Mesh uniform buffer (large enough for MAX_OBJECTS)
     pub(crate) mesh_uniform_buffer: wgpu::Buffer,
@@ -63,6 +85,15 @@ pub struct Viewport {
     pub(crate) gizmo_uniform_buffer: wgpu::Buffer,
     /// Gizmo bind group
     pub(crate) gizmo_bind_group: wgpu::BindGroup,
+    /// Textured mesh pipeline
+    pub(crate) textured_pipeline: wgpu::RenderPipeline,
+    /// Texture bind group layout
+    pub(crate) texture_bind_group_layout: wgpu::BindGroupLayout,
+    /// Default white texture bind group (fallback for failed texture loads)
+    #[allow(dead_code)]
+    pub(crate) default_texture_bind_group: wgpu::BindGroup,
+    /// Texture cache: path -> cached texture
+    pub(crate) texture_cache: HashMap<String, CachedTexture>,
 }
 
 impl Viewport {
@@ -426,6 +457,88 @@ impl Viewport {
             mapped_at_creation: false,
         });
 
+        // Create textured pipeline
+        let textured_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Textured Shader"),
+            source: wgpu::ShaderSource::Wgsl(
+                include_str!("../../shaders/textured_simple.wgsl").into(),
+            ),
+        });
+
+        // Texture bind group layout (group 1)
+        let texture_bind_group_layout = Texture::bind_group_layout(device);
+
+        let textured_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Textured Pipeline Layout"),
+                bind_group_layouts: &[&mesh_bind_group_layout, &texture_bind_group_layout],
+                push_constant_ranges: &[],
+            });
+
+        let textured_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Textured Pipeline"),
+            layout: Some(&textured_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &textured_shader,
+                entry_point: Some("vs_main"),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<crate::render::Vertex>()
+                        as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            offset: 0,
+                            shader_location: 0,
+                            format: wgpu::VertexFormat::Float32x3,
+                        },
+                        wgpu::VertexAttribute {
+                            offset: 12,
+                            shader_location: 1,
+                            format: wgpu::VertexFormat::Float32x3,
+                        },
+                        wgpu::VertexAttribute {
+                            offset: 24,
+                            shader_location: 2,
+                            format: wgpu::VertexFormat::Float32x2,
+                        },
+                    ],
+                }],
+                compilation_options: Default::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &textured_shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: Default::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                ..Default::default()
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth32Float,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
+
+        // Create default white texture for fallback
+        let default_texture =
+            Texture::white(device, &ctx.queue).expect("Failed to create default white texture");
+        let default_texture_bind_group =
+            default_texture.create_bind_group(device, &texture_bind_group_layout);
+
         Self {
             size: (width, height),
             render_texture,
@@ -447,7 +560,49 @@ impl Viewport {
             gizmo_tri_buffer,
             gizmo_uniform_buffer,
             gizmo_bind_group,
+            textured_pipeline,
+            texture_bind_group_layout,
+            default_texture_bind_group,
+            texture_cache: HashMap::new(),
         }
+    }
+
+    /// Get or load a texture from the cache
+    pub fn get_or_load_texture(
+        &mut self,
+        ctx: &RenderContext,
+        path: &str,
+    ) -> Option<&wgpu::BindGroup> {
+        // Return cached if exists
+        if self.texture_cache.contains_key(path) {
+            return self.texture_cache.get(path).map(|c| &c.bind_group);
+        }
+
+        // Try to load texture
+        match Texture::from_file(&ctx.device, &ctx.queue, path) {
+            Ok(texture) => {
+                let bind_group =
+                    texture.create_bind_group(&ctx.device, &self.texture_bind_group_layout);
+                self.texture_cache.insert(
+                    path.to_string(),
+                    CachedTexture {
+                        texture,
+                        bind_group,
+                    },
+                );
+                log::info!("Loaded texture: {}", path);
+                self.texture_cache.get(path).map(|c| &c.bind_group)
+            }
+            Err(e) => {
+                log::error!("Failed to load texture {}: {}", path, e);
+                None
+            }
+        }
+    }
+
+    /// Clear the texture cache
+    pub fn clear_texture_cache(&mut self) {
+        self.texture_cache.clear();
     }
 
     /// Resize the viewport

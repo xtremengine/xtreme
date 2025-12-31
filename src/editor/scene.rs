@@ -36,6 +36,9 @@ pub struct SceneObjectData {
     /// Camera component (optional)
     #[serde(default)]
     pub camera: Option<CameraComponent>,
+    /// Texture path (relative to project)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub texture_path: Option<String>,
 }
 
 impl SceneObjectData {
@@ -276,6 +279,7 @@ mod tests {
             parent_index: None,
             scripts: Vec::new(),
             camera: None,
+            texture_path: None,
         });
 
         let temp = NamedTempFile::new().unwrap();

@@ -69,6 +69,7 @@ impl EditorApp {
                 parent_index,
                 scripts,
                 camera: obj.camera.clone(),
+                texture_path: obj.texture_path.clone(),
             });
         }
 
@@ -113,6 +114,7 @@ impl EditorApp {
                     obj.color = obj_data.color;
                     obj.visible = obj_data.visible;
                     obj.camera = obj_data.camera.clone();
+                    obj.texture_path = obj_data.texture_path.clone();
 
                     parent_indices.push(obj_data.parent_index);
                     self.scene_objects.push(obj);

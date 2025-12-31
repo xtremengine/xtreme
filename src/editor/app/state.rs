@@ -88,10 +88,6 @@ pub struct EditorApp {
     pub(crate) clipboard: Vec<SceneObject>,
     /// Saved prefabs
     pub(crate) prefabs: Vec<Prefab>,
-    /// Prefab name input for dialog
-    pub(crate) prefab_name_input: String,
-    /// Whether prefab dialog is open
-    pub(crate) show_prefab_dialog: bool,
     /// Asset browser panel
     pub(crate) asset_browser: AssetBrowser,
     /// Script runtime (only with scripting feature)
@@ -135,6 +131,8 @@ pub struct EditorApp {
     pub(crate) game_window: Option<GameWindow>,
     /// Pending game window creation (needs event loop)
     pub(crate) pending_game_start: bool,
+    /// Height of hierarchy panel for resizable split
+    pub(crate) hierarchy_height: f32,
 }
 
 impl EditorApp {
@@ -184,8 +182,6 @@ impl EditorApp {
             snap_settings: SnapSettings::new(),
             clipboard: Vec::new(),
             prefabs: Vec::new(),
-            prefab_name_input: String::new(),
-            show_prefab_dialog: false,
             asset_browser: AssetBrowser::new(std::path::PathBuf::from(".")),
             #[cfg(feature = "scripting")]
             script_runtime: ScriptRuntime::new(),
@@ -207,6 +203,7 @@ impl EditorApp {
             project_dialog_tab: 0,
             game_window: None,
             pending_game_start: false,
+            hierarchy_height: 300.0,
         }
     }
 }

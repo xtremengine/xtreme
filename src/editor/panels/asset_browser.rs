@@ -1,6 +1,6 @@
 //! # Asset Browser Panel
 //!
-//! File browser for project assets (scenes, prefabs, textures, etc.)
+//! File browser for project assets (scenes, prefabs, textures, scripts, etc.)
 
 use egui::Ui;
 use std::path::PathBuf;
@@ -12,6 +12,7 @@ pub enum AssetType {
     Scene,
     Prefab,
     Texture,
+    Script,
     Unknown,
 }
 
@@ -23,6 +24,7 @@ impl AssetType {
             AssetType::Scene => "[S]",
             AssetType::Prefab => "[P]",
             AssetType::Texture => "[T]",
+            AssetType::Script => "[#]",
             AssetType::Unknown => "[?]",
         }
     }
@@ -30,9 +32,10 @@ impl AssetType {
     /// Detect type from file extension
     pub fn from_extension(ext: &str) -> Self {
         match ext.to_lowercase().as_str() {
-            "ron" | "json" => AssetType::Scene, // Could also be prefab
-            "prefab" => AssetType::Prefab,
+            "ron" | "json" => AssetType::Scene,
+            "xpfb" => AssetType::Prefab,
             "png" | "jpg" | "jpeg" | "bmp" | "tga" => AssetType::Texture,
+            "py" => AssetType::Script,
             _ => AssetType::Unknown,
         }
     }
@@ -56,6 +59,10 @@ pub enum AssetAction {
     OpenScene(PathBuf),
     LoadPrefab(PathBuf),
     OpenDirectory(PathBuf),
+    AssignTexture(PathBuf),
+    OpenScript(PathBuf),
+    ShowInExplorer(PathBuf),
+    Delete(PathBuf),
 }
 
 /// Asset browser panel
@@ -217,7 +224,7 @@ impl AssetBrowser {
 
         // Content area with scroll
         egui::ScrollArea::vertical()
-            .max_height(150.0)
+            .auto_shrink([false, false])
             .show(ui, |ui| {
                 let filter_lower = self.filter.to_lowercase();
 
@@ -237,6 +244,7 @@ impl AssetBrowser {
                         self.selected = Some(i);
                     }
 
+                    // Double-click actions
                     if response.double_clicked() {
                         match &entry.asset_type {
                             AssetType::Directory => {
@@ -248,9 +256,65 @@ impl AssetBrowser {
                             AssetType::Prefab => {
                                 action = AssetAction::LoadPrefab(entry.path.clone());
                             }
+                            AssetType::Script => {
+                                action = AssetAction::OpenScript(entry.path.clone());
+                            }
+                            AssetType::Texture => {
+                                action = AssetAction::AssignTexture(entry.path.clone());
+                            }
                             _ => {}
                         }
                     }
+
+                    // Context menu (right-click)
+                    response.context_menu(|ui| {
+                        match &entry.asset_type {
+                            AssetType::Directory => {
+                                if ui.button("Open").clicked() {
+                                    action = AssetAction::OpenDirectory(entry.path.clone());
+                                    ui.close();
+                                }
+                            }
+                            AssetType::Scene => {
+                                if ui.button("Open Scene").clicked() {
+                                    action = AssetAction::OpenScene(entry.path.clone());
+                                    ui.close();
+                                }
+                            }
+                            AssetType::Prefab => {
+                                if ui.button("Load Prefab").clicked() {
+                                    action = AssetAction::LoadPrefab(entry.path.clone());
+                                    ui.close();
+                                }
+                            }
+                            AssetType::Texture => {
+                                if ui.button("Assign to Selected").clicked() {
+                                    action = AssetAction::AssignTexture(entry.path.clone());
+                                    ui.close();
+                                }
+                            }
+                            AssetType::Script => {
+                                if ui.button("Open in Editor").clicked() {
+                                    action = AssetAction::OpenScript(entry.path.clone());
+                                    ui.close();
+                                }
+                            }
+                            _ => {}
+                        }
+
+                        ui.separator();
+
+                        if ui.button("Show in Explorer").clicked() {
+                            action = AssetAction::ShowInExplorer(entry.path.clone());
+                            ui.close();
+                        }
+
+                        if entry.asset_type != AssetType::Directory && ui.button("Delete").clicked()
+                        {
+                            action = AssetAction::Delete(entry.path.clone());
+                            ui.close();
+                        }
+                    });
                 }
             });
 

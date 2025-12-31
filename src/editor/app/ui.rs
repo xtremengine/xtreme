@@ -31,7 +31,6 @@ impl EditorApp {
         self.draw_toolbar(&egui_ctx);
         self.draw_hierarchy_panel(&egui_ctx);
         self.draw_inspector_panel(&egui_ctx);
-        self.draw_asset_browser_panel(&egui_ctx);
         self.draw_status_bar(&egui_ctx, viewport_size);
         self.draw_viewport_panel(&egui_ctx, viewport_size);
         self.draw_file_dialog(&egui_ctx);
@@ -81,51 +80,133 @@ impl EditorApp {
     }
 
     fn draw_hierarchy_panel(&mut self, ctx: &egui::Context) {
-        egui::SidePanel::left("hierarchy")
-            .default_width(200.0)
+        egui::SidePanel::left("left_panel")
+            .default_width(220.0)
             .show(ctx, |ui| {
-                let action =
-                    self.hierarchy_panel
-                        .show(ui, &mut self.scene_objects, &mut self.selection);
-                match action {
-                    HierarchyAction::CreateCube => {
-                        let obj = SceneObject::cube(self.next_id, Vec3::new(0.0, 0.5, 0.0));
-                        self.next_id += 1;
-                        self.create_object(obj);
-                    }
-                    HierarchyAction::CreateEmpty => {
-                        let mut obj =
-                            SceneObject::new(self.next_id, format!("Empty {}", self.next_id));
-                        self.next_id += 1;
-                        obj.visible = true;
-                        self.create_object(obj);
-                    }
-                    HierarchyAction::CreateCamera => {
-                        let obj = SceneObject::camera(self.next_id, Vec3::new(0.0, 5.0, -10.0));
-                        self.next_id += 1;
-                        self.create_object(obj);
-                    }
-                    HierarchyAction::Delete(id) => {
-                        self.delete_object(id);
-                    }
-                    HierarchyAction::Duplicate(id) => {
-                        self.duplicate_object(id);
-                    }
-                    HierarchyAction::Focus(id) => {
-                        self.focus_on_object(id);
-                    }
-                    HierarchyAction::ToggleVisibility(id) => {
-                        if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == id) {
-                            obj.visible = !obj.visible;
-                        }
-                    }
-                    HierarchyAction::Rename(_) => {}
-                    HierarchyAction::Reparent(child_id, new_parent_id) => {
-                        self.reparent_object(child_id, new_parent_id);
-                    }
-                    HierarchyAction::None => {}
-                }
+                // Hierarchy (top) - resizable
+                egui::TopBottomPanel::top("hierarchy_inner")
+                    .resizable(true)
+                    .default_height(self.hierarchy_height)
+                    .min_height(100.0)
+                    .show_inside(ui, |ui| {
+                        self.draw_hierarchy_content(ui);
+                    });
+
+                // File Explorer (bottom) - fills remaining space
+                egui::CentralPanel::default().show_inside(ui, |ui| {
+                    self.draw_file_explorer_content(ui);
+                });
             });
+    }
+
+    fn draw_hierarchy_content(&mut self, ui: &mut egui::Ui) {
+        let action = self
+            .hierarchy_panel
+            .show(ui, &mut self.scene_objects, &mut self.selection);
+        match action {
+            HierarchyAction::CreateCube => {
+                let obj = SceneObject::cube(self.next_id, Vec3::new(0.0, 0.5, 0.0));
+                self.next_id += 1;
+                self.create_object(obj);
+            }
+            HierarchyAction::CreateEmpty => {
+                let mut obj = SceneObject::new(self.next_id, format!("Empty {}", self.next_id));
+                self.next_id += 1;
+                obj.visible = true;
+                self.create_object(obj);
+            }
+            HierarchyAction::CreateCamera => {
+                let obj = SceneObject::camera(self.next_id, Vec3::new(0.0, 5.0, -10.0));
+                self.next_id += 1;
+                self.create_object(obj);
+            }
+            HierarchyAction::Delete(id) => {
+                self.delete_object(id);
+            }
+            HierarchyAction::Duplicate(id) => {
+                self.duplicate_object(id);
+            }
+            HierarchyAction::Focus(id) => {
+                self.focus_on_object(id);
+            }
+            HierarchyAction::ToggleVisibility(id) => {
+                if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == id) {
+                    obj.visible = !obj.visible;
+                }
+            }
+            HierarchyAction::Rename(_) => {}
+            HierarchyAction::Reparent(child_id, new_parent_id) => {
+                self.reparent_object(child_id, new_parent_id);
+            }
+            HierarchyAction::None => {}
+        }
+    }
+
+    fn draw_file_explorer_content(&mut self, ui: &mut egui::Ui) {
+        let action = self.asset_browser.show(ui);
+        match action {
+            AssetAction::OpenScene(path) => {
+                self.load_scene(path);
+            }
+            AssetAction::LoadPrefab(path) => {
+                self.load_prefab(path);
+            }
+            AssetAction::AssignTexture(path) => {
+                // Assign texture to selected object(s)
+                let path_str = path.to_string_lossy().to_string();
+                for &id in self.selection.all() {
+                    if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == id) {
+                        obj.texture_path = Some(path_str.clone());
+                    }
+                }
+                if !self.selection.is_empty() {
+                    log::info!("Assigned texture {} to selected objects", path_str);
+                    self.scene_manager.mark_dirty();
+                }
+            }
+            AssetAction::OpenScript(path) => {
+                // Open script in system editor
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = std::process::Command::new("cmd")
+                        .args(["/C", "start", "", &path.to_string_lossy()])
+                        .spawn();
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    let _ = std::process::Command::new("xdg-open").arg(&path).spawn();
+                }
+            }
+            AssetAction::ShowInExplorer(path) => {
+                // Show file in system explorer
+                let folder = if path.is_dir() {
+                    path.clone()
+                } else {
+                    path.parent()
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or(path.clone())
+                };
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = std::process::Command::new("explorer").arg(&folder).spawn();
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    let _ = std::process::Command::new("xdg-open").arg(&folder).spawn();
+                }
+            }
+            AssetAction::Delete(path) => {
+                // Delete file
+                if let Err(e) = std::fs::remove_file(&path) {
+                    log::error!("Failed to delete {}: {}", path.display(), e);
+                } else {
+                    log::info!("Deleted {}", path.display());
+                    self.asset_browser.refresh();
+                }
+            }
+            AssetAction::OpenDirectory(_) => {}
+            AssetAction::None => {}
+        }
     }
 
     fn draw_inspector_panel(&mut self, ctx: &egui::Context) {
@@ -319,26 +400,6 @@ impl EditorApp {
             ui.add_enabled(false, egui::Button::new("Attach Script..."));
             ui.label("(Enable 'scripting' feature)");
         }
-    }
-
-    fn draw_asset_browser_panel(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::bottom("asset_browser_panel")
-            .resizable(true)
-            .default_height(180.0)
-            .min_height(100.0)
-            .show(ctx, |ui| {
-                let action = self.asset_browser.show(ui);
-                match action {
-                    AssetAction::OpenScene(path) => {
-                        self.load_scene(path);
-                    }
-                    AssetAction::LoadPrefab(path) => {
-                        self.load_prefab(path);
-                    }
-                    AssetAction::OpenDirectory(_) => {}
-                    AssetAction::None => {}
-                }
-            });
     }
 
     fn draw_status_bar(&mut self, ctx: &egui::Context, viewport_size: &(f32, f32)) {

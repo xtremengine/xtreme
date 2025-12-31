@@ -366,8 +366,18 @@ impl EditorApp {
                 )
                 .clicked()
             {
-                self.prefab_name_input = format!("Prefab {}", self.prefabs.len() + 1);
-                self.show_prefab_dialog = true;
+                self.create_prefab_with_file_dialog();
+                ui.close();
+            }
+
+            if ui.button("Load Prefab...").clicked() {
+                if let Some(path) = rfd::FileDialog::new()
+                    .add_filter("Xtreme Prefab", &["xpfb"])
+                    .set_title("Load Prefab")
+                    .pick_file()
+                {
+                    self.load_prefab(path);
+                }
                 ui.close();
             }
 

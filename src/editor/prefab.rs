@@ -55,6 +55,12 @@ pub struct PrefabObject {
     /// Camera component (optional)
     #[serde(default)]
     pub camera: Option<CameraComponent>,
+    /// Parent index within the prefab (None = root object)
+    #[serde(default)]
+    pub parent_index: Option<usize>,
+    /// Attached script paths
+    #[serde(default)]
+    pub scripts: Vec<String>,
 }
 
 impl PrefabObject {
@@ -95,6 +101,12 @@ impl Default for Prefab {
     }
 }
 
+/// Data needed to create a prefab from selection
+pub struct PrefabCreationData {
+    pub object: SceneObject,
+    pub script_paths: Vec<String>,
+}
+
 impl Prefab {
     /// Create a new empty prefab
     pub fn new(name: impl Into<String>) -> Self {
@@ -105,61 +117,154 @@ impl Prefab {
         }
     }
 
-    /// Create a prefab from selected scene objects
+    /// Create a prefab from selected scene objects (without scripts)
     pub fn from_selection(
         name: impl Into<String>,
         objects: &[SceneObject],
     ) -> Result<Self, PrefabError> {
-        if objects.is_empty() {
+        // Convert to creation data without scripts
+        let data: Vec<PrefabCreationData> = objects
+            .iter()
+            .map(|obj| PrefabCreationData {
+                object: obj.clone(),
+                script_paths: Vec::new(),
+            })
+            .collect();
+
+        Self::from_selection_with_scripts(name, &data)
+    }
+
+    /// Create a prefab from selected scene objects with script paths
+    pub fn from_selection_with_scripts(
+        name: impl Into<String>,
+        data: &[PrefabCreationData],
+    ) -> Result<Self, PrefabError> {
+        if data.is_empty() {
             return Err(PrefabError::Empty);
         }
 
-        // Calculate center of selection
-        let center = objects
+        // Build a map from object id to index in the selection
+        let id_to_index: std::collections::HashMap<u32, usize> = data
             .iter()
-            .map(|o| o.position)
-            .fold(Vec3::ZERO, |a, b| a + b)
-            / objects.len() as f32;
+            .enumerate()
+            .map(|(idx, d)| (d.object.id, idx))
+            .collect();
+
+        // Calculate center of selection (only root objects for center calculation)
+        let root_positions: Vec<Vec3> = data
+            .iter()
+            .filter(|d| {
+                // Object is root if it has no parent OR parent is not in selection
+                d.object.hierarchy.parent.is_none()
+                    || !id_to_index.contains_key(&d.object.hierarchy.parent.unwrap())
+            })
+            .map(|d| d.object.position)
+            .collect();
+
+        let center = if root_positions.is_empty() {
+            Vec3::ZERO
+        } else {
+            root_positions.iter().fold(Vec3::ZERO, |a, &b| a + b) / root_positions.len() as f32
+        };
 
         // Convert to prefab objects with relative positions
-        let prefab_objects: Vec<PrefabObject> = objects
+        let prefab_objects: Vec<PrefabObject> = data
             .iter()
-            .map(|obj| PrefabObject {
-                name: obj.name.clone(),
-                local_position: (obj.position - center).to_array(),
-                rotation: obj.rotation.to_array(),
-                scale: obj.scale.to_array(),
-                color: obj.color,
-                visible: obj.visible,
-                camera: obj.camera.clone(),
+            .map(|d| {
+                let obj = &d.object;
+
+                // Calculate parent index within the prefab
+                let parent_index = obj
+                    .hierarchy
+                    .parent
+                    .and_then(|parent_id| id_to_index.get(&parent_id).copied());
+
+                // Only apply center offset to root objects
+                let position_offset = if parent_index.is_none() {
+                    obj.position - center
+                } else {
+                    obj.position // Children keep their local position
+                };
+
+                PrefabObject {
+                    name: obj.name.clone(),
+                    local_position: position_offset.to_array(),
+                    rotation: obj.rotation.to_array(),
+                    scale: obj.scale.to_array(),
+                    color: obj.color,
+                    visible: obj.visible,
+                    camera: obj.camera.clone(),
+                    parent_index,
+                    scripts: d.script_paths.clone(),
+                }
             })
             .collect();
 
         Ok(Self {
             name: name.into(),
             objects: prefab_objects,
-            version: 1,
+            version: 2, // Version 2 includes hierarchy and scripts
         })
     }
 
     /// Instantiate this prefab at a position, returning new scene objects
     pub fn instantiate(&self, position: Vec3, next_id: &mut u32) -> Vec<SceneObject> {
-        self.objects
+        // First pass: create all objects and track their new IDs
+        let start_id = *next_id;
+        let mut objects: Vec<SceneObject> = self
+            .objects
             .iter()
             .map(|pobj| {
                 let id = *next_id;
                 *next_id += 1;
 
                 let mut obj = SceneObject::new(id, pobj.name.clone());
-                obj.position = position + pobj.position_vec();
+
+                // Position: root objects get offset by spawn position, children keep local position
+                if pobj.parent_index.is_none() {
+                    obj.position = position + pobj.position_vec();
+                } else {
+                    obj.position = pobj.position_vec();
+                }
+
                 obj.rotation = pobj.rotation_vec();
                 obj.scale = pobj.scale_vec();
                 obj.color = pobj.color;
                 obj.visible = pobj.visible;
                 obj.camera = pobj.camera.clone();
+                // Note: scripts will be attached by the caller using the script_paths
+
                 obj
             })
-            .collect()
+            .collect();
+
+        // Second pass: rebuild hierarchy using new IDs
+        for (idx, pobj) in self.objects.iter().enumerate() {
+            if let Some(parent_idx) = pobj.parent_index {
+                let child_id = start_id + idx as u32;
+                let parent_id = start_id + parent_idx as u32;
+
+                // Set parent on child
+                if let Some(child) = objects.iter_mut().find(|o| o.id == child_id) {
+                    child.hierarchy.parent = Some(parent_id);
+                }
+
+                // Add child to parent's children list
+                if let Some(parent) = objects.iter_mut().find(|o| o.id == parent_id) {
+                    parent.hierarchy.add_child(child_id);
+                }
+            }
+        }
+
+        objects
+    }
+
+    /// Get script paths for a specific object index
+    pub fn get_script_paths(&self, index: usize) -> &[String] {
+        self.objects
+            .get(index)
+            .map(|o| o.scripts.as_slice())
+            .unwrap_or(&[])
     }
 
     /// Save prefab to file (RON format)
@@ -225,8 +330,10 @@ mod tests {
                 color: [1.0, 1.0, 1.0, 1.0],
                 visible: true,
                 camera: None,
+                parent_index: None,
+                scripts: Vec::new(),
             }],
-            version: 1,
+            version: 2,
         };
 
         let mut next_id = 10;

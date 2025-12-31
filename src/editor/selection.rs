@@ -33,6 +33,8 @@ pub struct SceneObject {
     pub hierarchy: Hierarchy,
     /// Camera component (optional)
     pub camera: Option<CameraComponent>,
+    /// Texture path (relative to project)
+    pub texture_path: Option<String>,
 }
 
 impl SceneObject {
@@ -49,6 +51,7 @@ impl SceneObject {
             scripts: Vec::new(),
             hierarchy: Hierarchy::new(),
             camera: None,
+            texture_path: None,
         }
     }
 
@@ -65,6 +68,7 @@ impl SceneObject {
             scripts: Vec::new(),
             hierarchy: Hierarchy::new(),
             camera: None,
+            texture_path: None,
         }
     }
 
@@ -81,6 +85,7 @@ impl SceneObject {
             scripts: Vec::new(),
             hierarchy: Hierarchy::new(),
             camera: Some(CameraComponent::default()),
+            texture_path: None,
         }
     }
 

@@ -311,6 +311,39 @@ impl InspectorPanel {
                         changed = true;
                     }
                 });
+
+                ui.separator();
+
+                // Texture
+                ui.horizontal(|ui| {
+                    ui.label("Texture:");
+                    if let Some(ref path) = obj.texture_path {
+                        // Show filename only
+                        let filename = std::path::Path::new(path)
+                            .file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_else(|| path.clone());
+                        ui.label(&filename);
+                        if ui.small_button("X").clicked() {
+                            obj.texture_path = None;
+                            changed = true;
+                        }
+                    } else {
+                        ui.label("None");
+                    }
+                });
+
+                // Browse button for texture
+                if ui.button("Browse Texture...").clicked() {
+                    if let Some(path) = rfd::FileDialog::new()
+                        .add_filter("Images", &["png", "jpg", "jpeg", "bmp", "tga"])
+                        .set_title("Select Texture")
+                        .pick_file()
+                    {
+                        obj.texture_path = Some(path.to_string_lossy().to_string());
+                        changed = true;
+                    }
+                }
             });
 
             // Camera section (only if object has camera component)

@@ -9,7 +9,7 @@ use crate::editor::prefab::Prefab;
 use crate::editor::selection::SceneObject;
 
 impl EditorApp {
-    /// Create a prefab from current selection
+    /// Create a prefab from current selection (without scripts - use create_prefab_with_file_dialog instead)
     pub fn create_prefab_from_selection(&mut self, name: &str) -> bool {
         let selected_ids = self.selection.all();
         if selected_ids.is_empty() {
@@ -42,17 +42,20 @@ impl EditorApp {
 
     /// Instantiate a prefab at the given position
     pub fn instantiate_prefab(&mut self, prefab_idx: usize, position: Vec3) {
-        let Some(prefab) = self.prefabs.get(prefab_idx) else {
+        let Some(prefab) = self.prefabs.get(prefab_idx).cloned() else {
             log::error!("Prefab index {} out of range", prefab_idx);
             return;
         };
 
+        #[cfg(feature = "scripting")]
+        let start_id = self.next_id;
         let new_objects = prefab.instantiate(position, &mut self.next_id);
         let count = new_objects.len();
 
         // Clear selection and add new objects
         self.selection.clear();
-        for obj in new_objects {
+        #[allow(unused_variables)]
+        for (idx, obj) in new_objects.into_iter().enumerate() {
             // Record create command for undo
             let cmd = Command::Create {
                 object_id: obj.id,
@@ -67,6 +70,38 @@ impl EditorApp {
 
             self.selection.add(obj.id);
             self.scene_objects.push(obj);
+
+            // Re-attach scripts for this object
+            #[cfg(feature = "scripting")]
+            {
+                let script_paths = prefab.get_script_paths(idx);
+                let obj_id = start_id + idx as u32;
+
+                for script_path in script_paths {
+                    let path_buf = PathBuf::from(script_path);
+                    if path_buf.exists() {
+                        match self.script_runtime.attach_script(path_buf.clone(), obj_id) {
+                            Ok(script_id) => {
+                                if let Some(scene_obj) =
+                                    self.scene_objects.iter_mut().find(|o| o.id == obj_id)
+                                {
+                                    scene_obj.scripts.push(script_id);
+                                }
+                                log::info!(
+                                    "Re-attached script {:?} to object {}",
+                                    script_path,
+                                    obj_id
+                                );
+                            }
+                            Err(e) => {
+                                log::error!("Failed to attach script {:?}: {}", script_path, e);
+                            }
+                        }
+                    } else {
+                        log::warn!("Script not found: {:?}", script_path);
+                    }
+                }
+            }
         }
 
         self.scene_manager.mark_dirty();
