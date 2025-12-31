@@ -302,9 +302,9 @@ impl ShortcutManager {
 
         manager.bind(Shortcut::key(KeyCode::F), EditorAction::FocusSelected);
         manager.bind(Shortcut::key(KeyCode::Home), EditorAction::FrameAll);
-        manager.bind(Shortcut::key(KeyCode::Num1), EditorAction::FrontView);
-        manager.bind(Shortcut::key(KeyCode::Num7), EditorAction::TopView);
-        manager.bind(Shortcut::key(KeyCode::Num3), EditorAction::SideView);
+        manager.bind(Shortcut::ctrl(KeyCode::Num1), EditorAction::FrontView);
+        manager.bind(Shortcut::ctrl(KeyCode::Num7), EditorAction::TopView);
+        manager.bind(Shortcut::ctrl(KeyCode::Num3), EditorAction::SideView);
 
         manager.bind(Shortcut::key(KeyCode::H), EditorAction::ToggleVisibility);
 
@@ -354,6 +354,11 @@ impl ShortcutManager {
 
     /// Process egui input and return triggered actions
     pub fn process_input(&self, ctx: &egui::Context) -> Vec<EditorAction> {
+        // Don't process shortcuts when typing in a text field
+        if ctx.wants_keyboard_input() {
+            return Vec::new();
+        }
+
         let mut actions = Vec::new();
 
         ctx.input(|input| {

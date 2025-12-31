@@ -254,6 +254,12 @@ impl EditorApp {
                 self.create_object(obj);
                 ui.close();
             }
+            if ui.button("Camera").clicked() {
+                let obj = SceneObject::camera(self.next_id, Vec3::new(0.0, 5.0, -10.0));
+                self.next_id += 1;
+                self.create_object(obj);
+                ui.close();
+            }
             if ui.button("Random Cubes (5)").clicked() {
                 for _ in 0..5 {
                     let x = (rand_float() - 0.5) * 10.0;

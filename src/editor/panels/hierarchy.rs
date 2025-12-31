@@ -66,6 +66,9 @@ impl HierarchyPanel {
             if ui.button("+ Empty").clicked() {
                 action = HierarchyAction::CreateEmpty;
             }
+            if ui.button("+ Camera").clicked() {
+                action = HierarchyAction::CreateCamera;
+            }
             ui.separator();
             if ui.button("Delete").clicked() {
                 if let Some(id) = selection.first() {
@@ -336,6 +339,8 @@ pub enum HierarchyAction {
     CreateCube,
     /// Create an empty object
     CreateEmpty,
+    /// Create a camera object
+    CreateCamera,
     /// Delete an object
     Delete(ObjectId),
     /// Duplicate an object

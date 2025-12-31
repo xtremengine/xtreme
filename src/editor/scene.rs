@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
+use super::components::CameraComponent;
+
 /// Serializable scene object
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SceneObjectData {
@@ -31,6 +33,9 @@ pub struct SceneObjectData {
     /// Script paths attached to this object
     #[serde(default)]
     pub scripts: Vec<String>,
+    /// Camera component (optional)
+    #[serde(default)]
+    pub camera: Option<CameraComponent>,
 }
 
 impl SceneObjectData {
@@ -274,6 +279,7 @@ mod tests {
             visible: true,
             parent_index: None,
             scripts: Vec::new(),
+            camera: None,
         });
 
         let mut temp = NamedTempFile::new().unwrap();

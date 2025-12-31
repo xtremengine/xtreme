@@ -59,6 +59,7 @@ impl EditorApp {
                 visible: obj.visible,
                 parent_index,
                 scripts,
+                camera: obj.camera.clone(),
             });
         }
 
@@ -102,6 +103,7 @@ impl EditorApp {
                     obj.scale = obj_data.scale_vec();
                     obj.color = obj_data.color;
                     obj.visible = obj_data.visible;
+                    obj.camera = obj_data.camera.clone();
 
                     parent_indices.push(obj_data.parent_index);
                     self.scene_objects.push(obj);

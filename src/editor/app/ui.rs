@@ -93,6 +93,11 @@ impl EditorApp {
                         obj.visible = true;
                         self.create_object(obj);
                     }
+                    HierarchyAction::CreateCamera => {
+                        let obj = SceneObject::camera(self.next_id, Vec3::new(0.0, 5.0, -10.0));
+                        self.next_id += 1;
+                        self.create_object(obj);
+                    }
                     HierarchyAction::Delete(id) => {
                         self.delete_object(id);
                     }
@@ -124,32 +129,34 @@ impl EditorApp {
 
                 ui.separator();
 
-                // Camera controls
-                ui.heading("Camera");
-                ui.horizontal(|ui| {
-                    ui.label("Distance:");
-                    ui.add(egui::DragValue::new(&mut self.camera.distance).speed(0.1).range(1.0..=100.0).fixed_decimals(1));
-                });
+                // Camera controls (isolated to prevent ID collision with inspector)
+                ui.push_id("editor_camera_controls", |ui| {
+                    ui.heading("Camera");
+                    ui.horizontal(|ui| {
+                        ui.label("Distance:");
+                        ui.add(egui::DragValue::new(&mut self.camera.distance).speed(0.1).range(1.0..=100.0).fixed_decimals(1));
+                    });
 
-                let mut pitch_deg = self.camera.pitch.to_degrees();
-                ui.horizontal(|ui| {
-                    ui.label("Pitch:");
-                    if ui.add(egui::DragValue::new(&mut pitch_deg).speed(1.0).range(-89.0..=89.0).suffix("°").fixed_decimals(1)).changed() {
-                        self.camera.pitch = pitch_deg.to_radians();
-                    }
-                });
+                    let mut pitch_deg = self.camera.pitch.to_degrees();
+                    ui.horizontal(|ui| {
+                        ui.label("Pitch:");
+                        if ui.add(egui::DragValue::new(&mut pitch_deg).speed(1.0).range(-89.0..=89.0).suffix("°").fixed_decimals(1)).changed() {
+                            self.camera.pitch = pitch_deg.to_radians();
+                        }
+                    });
 
-                let mut yaw_deg = self.camera.yaw.to_degrees();
-                ui.horizontal(|ui| {
-                    ui.label("Yaw:");
-                    if ui.add(egui::DragValue::new(&mut yaw_deg).speed(1.0).suffix("°").fixed_decimals(1)).changed() {
-                        self.camera.yaw = yaw_deg.to_radians();
-                    }
-                });
+                    let mut yaw_deg = self.camera.yaw.to_degrees();
+                    ui.horizontal(|ui| {
+                        ui.label("Yaw:");
+                        if ui.add(egui::DragValue::new(&mut yaw_deg).speed(1.0).suffix("°").fixed_decimals(1)).changed() {
+                            self.camera.yaw = yaw_deg.to_radians();
+                        }
+                    });
 
-                ui.horizontal(|ui| {
-                    ui.label("Zoom:");
-                    ui.add(egui::DragValue::new(&mut self.camera.zoom).speed(0.1).range(1.0..=50.0).fixed_decimals(1));
+                    ui.horizontal(|ui| {
+                        ui.label("Zoom:");
+                        ui.add(egui::DragValue::new(&mut self.camera.zoom).speed(0.1).range(1.0..=50.0).fixed_decimals(1));
+                    });
                 });
 
                 ui.separator();

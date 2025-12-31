@@ -7,7 +7,9 @@ use winit::window::Window;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::WindowAttributes;
 
-use crate::render::{IsometricCamera, RenderContext, Uniforms, Mesh, GpuMesh, EguiIntegration};
+use glam::{Mat4, Vec3, Quat, EulerRot};
+
+use crate::render::{RenderContext, Uniforms, Mesh, GpuMesh, EguiIntegration};
 use crate::editor::selection::SceneObject;
 
 /// Maximum number of objects that can be rendered
@@ -49,8 +51,8 @@ pub struct GameWindow {
     pub window: Arc<Window>,
     /// Render context
     ctx: RenderContext,
-    /// Camera
-    camera: IsometricCamera,
+    /// Aspect ratio
+    aspect_ratio: f32,
     /// Mesh pipeline
     mesh_pipeline: wgpu::RenderPipeline,
     /// Mesh bind group layout
@@ -95,7 +97,6 @@ impl GameWindow {
     pub async fn new(
         event_loop: &ActiveEventLoop,
         scene_objects: Vec<SceneObject>,
-        camera: IsometricCamera,
         settings: GameSettings,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         // Create window
@@ -241,10 +242,9 @@ impl GameWindow {
         let cube = Mesh::cube(1.0);
         let cube_mesh = GpuMesh::from_mesh(&ctx.device, &cube);
 
-        // Update camera aspect ratio for the new window
-        let mut camera = camera;
+        // Calculate aspect ratio
         let (width, height) = ctx.size();
-        camera.aspect_ratio = width as f32 / height as f32;
+        let aspect_ratio = width as f32 / height as f32;
 
         let in_splash = settings.splash_duration > 0.0;
 
@@ -261,7 +261,7 @@ impl GameWindow {
         Ok(Self {
             window,
             ctx,
-            camera,
+            aspect_ratio,
             mesh_pipeline,
             mesh_bind_group_layout,
             mesh_uniform_buffer,
@@ -319,8 +319,8 @@ impl GameWindow {
         if new_size.width > 0 && new_size.height > 0 {
             self.ctx.resize(new_size.width, new_size.height);
 
-            // Update camera aspect ratio
-            self.camera.aspect_ratio = new_size.width as f32 / new_size.height as f32;
+            // Update aspect ratio
+            self.aspect_ratio = new_size.width as f32 / new_size.height as f32;
 
             // Recreate depth texture
             self.depth_texture = self.ctx.device.create_texture(&wgpu::TextureDescriptor {
@@ -384,6 +384,48 @@ impl GameWindow {
         self.play_time
     }
 
+    /// Find the main camera entity and calculate view_projection matrix
+    fn get_camera_view_projection(&self) -> (Mat4, [f32; 4]) {
+        // Find main camera entity (highest priority is_main camera)
+        let main_camera = self.scene_objects.iter()
+            .filter(|obj| obj.camera.as_ref().map(|c| c.is_main).unwrap_or(false))
+            .max_by_key(|obj| obj.camera.as_ref().map(|c| c.priority).unwrap_or(0));
+
+        if let Some(cam_obj) = main_camera {
+            if let Some(ref camera) = cam_obj.camera {
+                // Get world position and rotation
+                let world_pos = cam_obj.world_position(&self.scene_objects);
+                let world_rot = cam_obj.rotation; // TODO: Get world rotation when hierarchy supports it
+
+                // Calculate view matrix
+                let rotation = Quat::from_euler(
+                    EulerRot::XYZ,
+                    world_rot.x,
+                    world_rot.y,
+                    world_rot.z,
+                );
+                let forward = rotation * Vec3::NEG_Z;
+                let up = rotation * Vec3::Y;
+                let target = world_pos + forward;
+                let view = Mat4::look_at_rh(world_pos, target, up);
+
+                // Calculate projection matrix
+                let proj = camera.projection_matrix(self.aspect_ratio);
+
+                return (proj * view, camera.clear_color);
+            }
+        }
+
+        // Fallback: default camera looking at origin
+        let view = Mat4::look_at_rh(
+            Vec3::new(0.0, 10.0, -20.0),
+            Vec3::ZERO,
+            Vec3::Y,
+        );
+        let proj = Mat4::perspective_rh(60.0_f32.to_radians(), self.aspect_ratio, 0.1, 1000.0);
+        (proj * view, [0.1, 0.1, 0.15, 1.0])
+    }
+
     /// Calculate splash fade alpha (0.0 to 1.0)
     fn splash_alpha(&self) -> f32 {
         let duration = self.settings.splash_duration;
@@ -421,8 +463,22 @@ impl GameWindow {
             label: Some("Game Render Encoder"),
         });
 
+        // Get camera view_projection matrix and clear color
+        let (view_proj, camera_clear_color) = self.get_camera_view_projection();
+
         // Calculate background color (with splash fade to black)
-        let bg = self.settings.background_color;
+        // Use camera's clear_color if available, otherwise use settings
+        let bg = if camera_clear_color != [0.1, 0.1, 0.15, 1.0] {
+            // Convert camera clear_color (0-1 float) to 0-255
+            [
+                (camera_clear_color[0] * 255.0) as u8,
+                (camera_clear_color[1] * 255.0) as u8,
+                (camera_clear_color[2] * 255.0) as u8,
+            ]
+        } else {
+            self.settings.background_color
+        };
+
         let (r, g, b) = if self.in_splash {
             // During splash, fade from black to bg color
             let alpha = self.splash_alpha();
@@ -435,7 +491,6 @@ impl GameWindow {
         };
 
         // Update uniforms only when not in splash
-        let view_proj = self.camera.view_projection_matrix();
         let uniform_size = std::mem::size_of::<Uniforms>() as u32;
         let aligned_size = ((uniform_size + self.uniform_alignment - 1) / self.uniform_alignment) * self.uniform_alignment;
 

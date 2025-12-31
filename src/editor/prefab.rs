@@ -6,6 +6,7 @@ use std::path::Path;
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
 
+use super::components::CameraComponent;
 use super::selection::SceneObject;
 
 /// Error type for prefab operations
@@ -51,6 +52,9 @@ pub struct PrefabObject {
     pub color: [f32; 4],
     /// Visibility
     pub visible: bool,
+    /// Camera component (optional)
+    #[serde(default)]
+    pub camera: Option<CameraComponent>,
 }
 
 impl PrefabObject {
@@ -121,6 +125,7 @@ impl Prefab {
                 scale: obj.scale.to_array(),
                 color: obj.color,
                 visible: obj.visible,
+                camera: obj.camera.clone(),
             })
             .collect();
 
@@ -144,6 +149,7 @@ impl Prefab {
                 obj.scale = pobj.scale_vec();
                 obj.color = pobj.color;
                 obj.visible = pobj.visible;
+                obj.camera = pobj.camera.clone();
                 obj
             })
             .collect()
@@ -214,6 +220,7 @@ mod tests {
                     scale: [1.0, 1.0, 1.0],
                     color: [1.0, 1.0, 1.0, 1.0],
                     visible: true,
+                    camera: None,
                 },
             ],
             version: 1,

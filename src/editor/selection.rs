@@ -4,6 +4,7 @@
 
 use glam::{Vec3, Mat4, Quat, EulerRot};
 
+use crate::editor::components::CameraComponent;
 use crate::editor::hierarchy::{Hierarchy, helpers::HasHierarchy};
 
 /// Unique identifier for scene objects
@@ -30,6 +31,8 @@ pub struct SceneObject {
     pub scripts: Vec<u32>,
     /// Hierarchy component (parent/children relationships)
     pub hierarchy: Hierarchy,
+    /// Camera component (optional)
+    pub camera: Option<CameraComponent>,
 }
 
 impl SceneObject {
@@ -45,6 +48,7 @@ impl SceneObject {
             visible: true,
             scripts: Vec::new(),
             hierarchy: Hierarchy::new(),
+            camera: None,
         }
     }
 
@@ -60,6 +64,23 @@ impl SceneObject {
             visible: true,
             scripts: Vec::new(),
             hierarchy: Hierarchy::new(),
+            camera: None,
+        }
+    }
+
+    /// Create a camera object
+    pub fn camera(id: ObjectId, position: Vec3) -> Self {
+        Self {
+            id,
+            name: format!("Camera {}", id),
+            position,
+            rotation: Vec3::ZERO,
+            scale: Vec3::ONE,
+            color: [0.2, 0.6, 0.9, 1.0], // Blue for cameras
+            visible: true,
+            scripts: Vec::new(),
+            hierarchy: Hierarchy::new(),
+            camera: Some(CameraComponent::default()),
         }
     }
 

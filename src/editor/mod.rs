@@ -39,6 +39,7 @@ mod game_window;
 pub mod mesh;
 pub mod project;
 pub mod hierarchy;
+pub mod components;
 
 pub use app::EditorApp;
 pub use project::{Project, ProjectConfig};
@@ -51,3 +52,4 @@ pub use shortcuts::{Shortcut, ShortcutManager, EditorAction, KeyCode, Modifiers}
 pub use scene::{SceneData, SceneObjectData, SceneManager, SceneError};
 pub use snap::SnapSettings;
 pub use prefab::{Prefab, PrefabObject, PrefabError};
+pub use components::{CameraComponent, CameraProjection};

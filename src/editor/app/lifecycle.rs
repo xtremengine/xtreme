@@ -18,21 +18,29 @@ use super::EditorApp;
 
 impl EditorApp {
     /// Get model matrices and colors for rendering (uses world transforms)
-    pub fn get_render_data(&self) -> Vec<(Mat4, [f32; 4])> {
-        self.scene_objects
-            .iter()
-            .filter(|o| o.visible)
-            .map(|o| {
-                let is_selected = self.selection.is_selected(o.id);
-                let color = if is_selected {
-                    [1.0, 0.8, 0.2, 1.0] // Yellow highlight
-                } else {
-                    o.color
-                };
-                // Use world matrix to account for parent hierarchy
-                (o.world_matrix(&self.scene_objects), color)
-            })
-            .collect()
+    /// Returns (regular_objects, camera_objects) - cameras are rendered separately as wireframes
+    pub fn get_render_data(&self) -> (Vec<(Mat4, [f32; 4])>, Vec<(Mat4, [f32; 4])>) {
+        let mut regular = Vec::new();
+        let mut cameras = Vec::new();
+
+        for o in self.scene_objects.iter().filter(|o| o.visible) {
+            let is_selected = self.selection.is_selected(o.id);
+            let color = if is_selected {
+                [1.0, 0.8, 0.2, 1.0] // Yellow highlight
+            } else {
+                o.color
+            };
+            // Use world matrix to account for parent hierarchy
+            let data = (o.world_matrix(&self.scene_objects), color);
+
+            if o.camera.is_some() {
+                cameras.push(data);
+            } else {
+                regular.push(data);
+            }
+        }
+
+        (regular, cameras)
     }
 }
 
@@ -135,12 +143,16 @@ impl App for EditorApp {
 
         let mut encoder = ctx.create_encoder("Editor Frame");
 
-        // Get render data
-        let render_data = self.get_render_data();
+        // Get render data (regular objects and cameras separately)
+        let (regular_objects, camera_objects) = self.get_render_data();
 
         // Render viewport
         if let Some(viewport) = &self.viewport {
-            viewport.render(ctx, &mut encoder, &self.camera, &render_data);
+            // Render regular objects as cubes
+            viewport.render(ctx, &mut encoder, &self.camera, &regular_objects);
+
+            // Render camera objects as wireframe pyramids
+            viewport.render_camera_wireframes(ctx, &mut encoder, &self.camera, &camera_objects);
 
             // Render gizmo if we have a selection and not in Select mode
             if self.toolbar_panel.current_tool != Tool::Select {
@@ -217,7 +229,6 @@ impl App for EditorApp {
             match pollster::block_on(GameWindow::new(
                 event_loop,
                 self.scene_objects.clone(),
-                self.camera.clone(),
                 settings,
             )) {
                 Ok(game_window) => {

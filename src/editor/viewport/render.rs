@@ -5,7 +5,7 @@ use glam::{Mat4, Vec3};
 use crate::render::{IsometricCamera, RenderContext, Uniforms};
 use super::types::{GridUniforms, GizmoUniforms, MAX_OBJECTS};
 use super::Viewport;
-use crate::editor::gizmos::Gizmo;
+use crate::editor::gizmos::{Gizmo, GizmoVertex};
 
 impl Viewport {
     /// Render the viewport
@@ -217,6 +217,108 @@ impl Viewport {
                 pass.set_vertex_buffer(0, self.gizmo_line_buffer.slice(..));
                 pass.draw(0..lines.len() as u32, 0..1);
             }
+        }
+    }
+
+    /// Render camera wireframes (pyramid shape showing direction)
+    /// Each camera is represented by: apex (front) + 4 base corners + 8 lines
+    pub fn render_camera_wireframes(
+        &self,
+        ctx: &RenderContext,
+        encoder: &mut wgpu::CommandEncoder,
+        camera: &IsometricCamera,
+        cameras: &[(Mat4, [f32; 4])], // (world_matrix, color) for each camera object
+    ) {
+        if cameras.is_empty() {
+            return;
+        }
+
+        // Generate pyramid wireframe vertices for all cameras
+        let mut lines: Vec<GizmoVertex> = Vec::new();
+
+        for (world_matrix, color) in cameras {
+            // Pyramid dimensions (in local space)
+            // Camera looks down -Z, so:
+            // - Apex at back (near camera position, +Z)
+            // - Base in front (where camera looks, -Z)
+            let apex = world_matrix.transform_point3(Vec3::new(0.0, 0.0, 0.5));
+            let base_bl = world_matrix.transform_point3(Vec3::new(-0.5, -0.5, -1.5));
+            let base_br = world_matrix.transform_point3(Vec3::new(0.5, -0.5, -1.5));
+            let base_tl = world_matrix.transform_point3(Vec3::new(-0.5, 0.5, -1.5));
+            let base_tr = world_matrix.transform_point3(Vec3::new(0.5, 0.5, -1.5));
+
+            // Base lines (4 lines forming a square)
+            lines.push(GizmoVertex::new(base_bl, *color));
+            lines.push(GizmoVertex::new(base_br, *color));
+
+            lines.push(GizmoVertex::new(base_br, *color));
+            lines.push(GizmoVertex::new(base_tr, *color));
+
+            lines.push(GizmoVertex::new(base_tr, *color));
+            lines.push(GizmoVertex::new(base_tl, *color));
+
+            lines.push(GizmoVertex::new(base_tl, *color));
+            lines.push(GizmoVertex::new(base_bl, *color));
+
+            // Apex lines (4 lines from apex to base corners)
+            lines.push(GizmoVertex::new(apex, *color));
+            lines.push(GizmoVertex::new(base_bl, *color));
+
+            lines.push(GizmoVertex::new(apex, *color));
+            lines.push(GizmoVertex::new(base_br, *color));
+
+            lines.push(GizmoVertex::new(apex, *color));
+            lines.push(GizmoVertex::new(base_tl, *color));
+
+            lines.push(GizmoVertex::new(apex, *color));
+            lines.push(GizmoVertex::new(base_tr, *color));
+        }
+
+        if lines.is_empty() {
+            return;
+        }
+
+        // Update gizmo uniforms (reuse existing buffer)
+        let view_proj = camera.view_projection_matrix();
+        let uniforms = GizmoUniforms {
+            view_proj: view_proj.to_cols_array_2d(),
+            model: Mat4::IDENTITY.to_cols_array_2d(), // Vertices already in world space
+        };
+        ctx.queue.write_buffer(&self.gizmo_uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+
+        // Upload line vertices
+        let line_data: &[u8] = bytemuck::cast_slice(&lines);
+        ctx.queue.write_buffer(&self.gizmo_line_buffer, 0, line_data);
+
+        // Render camera wireframes
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Viewport Camera Wireframe Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.render_view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            pass.set_pipeline(&self.gizmo_line_pipeline);
+            pass.set_bind_group(0, &self.gizmo_bind_group, &[]);
+            pass.set_vertex_buffer(0, self.gizmo_line_buffer.slice(..));
+            pass.draw(0..lines.len() as u32, 0..1);
         }
     }
 }
