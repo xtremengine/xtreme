@@ -37,6 +37,7 @@ impl EditorApp {
         self.draw_file_dialog(&egui_ctx);
         self.draw_prefab_dialog(&egui_ctx);
         self.draw_script_dialog(&egui_ctx);
+        self.draw_attach_script_dialog(&egui_ctx);
         self.draw_project_dialog(&egui_ctx);
         self.draw_splash_screen(&egui_ctx);
     }
@@ -242,14 +243,22 @@ impl EditorApp {
         }
 
         #[cfg(feature = "scripting")]
-        if ui.button("Add Script...").clicked() {
-            self.show_script_dialog = true;
-            self.script_path_input.clear();
+        {
+            ui.horizontal(|ui| {
+                if ui.button("New Script...").clicked() {
+                    self.show_script_dialog = true;
+                    self.script_path_input.clear();
+                }
+                if ui.button("Attach Script...").clicked() {
+                    self.show_attach_script_dialog = true;
+                }
+            });
         }
 
         #[cfg(not(feature = "scripting"))]
         {
-            ui.add_enabled(false, egui::Button::new("Add Script..."));
+            ui.add_enabled(false, egui::Button::new("New Script..."));
+            ui.add_enabled(false, egui::Button::new("Attach Script..."));
             ui.label("(Enable 'scripting' feature)");
         }
     }

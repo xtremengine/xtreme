@@ -3,7 +3,8 @@
 use std::sync::Arc;
 use glam::{Vec3, Mat4};
 use winit::event::WindowEvent;
-use winit::window::Window as WinitWindow;
+use winit::event_loop::ActiveEventLoop;
+use winit::window::{Window as WinitWindow, WindowId};
 
 use crate::render::{App, AppEvent, RenderContext, IsometricCamera, EguiIntegration};
 use crate::editor::viewport::Viewport;
@@ -11,6 +12,7 @@ use crate::editor::selection::SceneObject;
 use crate::editor::panels::Tool;
 use crate::editor::gizmos::GizmoMode;
 use crate::editor::shortcuts::EditorAction;
+use crate::editor::game_window::GameWindow;
 use super::state::FileDialogAction;
 use super::EditorApp;
 
@@ -78,13 +80,6 @@ impl App for EditorApp {
 
     fn update(&mut self) {
         self.frame_count += 1;
-
-        // Update splash screen
-        self.update_splash();
-
-        // Update scripts during play mode
-        #[cfg(feature = "scripting")]
-        self.update_scripts();
 
         // Begin egui frame
         if let (Some(egui), Some(window)) = (&mut self.egui, &self.window) {
@@ -191,6 +186,156 @@ impl App for EditorApp {
 
     fn shutdown(&mut self) {
         log::info!("Editor shutting down after {} frames", self.frame_count);
+    }
+
+    fn handle_pending_windows(&mut self, event_loop: &ActiveEventLoop) {
+        // Create game window if requested
+        if self.pending_game_start {
+            self.pending_game_start = false;
+
+            // Save current scene state
+            self.saved_scene_state = self.scene_objects.clone();
+
+            // Create game window
+            match pollster::block_on(GameWindow::new(
+                event_loop,
+                self.scene_objects.clone(),
+                self.camera.clone(),
+            )) {
+                Ok(game_window) => {
+                    game_window.window.request_redraw();
+                    self.is_playing = true;
+                    self.play_time = 0.0;
+                    self.last_frame_instant = Some(std::time::Instant::now());
+                    log::info!("Game window created - play mode started");
+
+                    // Initialize scripts with game window objects
+                    #[cfg(feature = "scripting")]
+                    {
+                        use crate::scripting::ObjectTransform;
+
+                        // Sync script context with game window objects
+                        self.script_context.clear_objects();
+                        self.script_context.set_time(0.0);
+
+                        for obj in game_window.scene_objects() {
+                            let transform = ObjectTransform {
+                                position: obj.position.to_array(),
+                                rotation: obj.rotation.to_array(),
+                                scale: obj.scale.to_array(),
+                            };
+                            self.script_context.register_object(obj.id, obj.name.clone(), transform, obj.visible);
+                        }
+
+                        // Call _ready on all scripts
+                        if let Err(e) = self.script_runtime.call_ready(&mut self.script_context) {
+                            log::error!("Script ready failed: {}", e);
+                        }
+                    }
+
+                    self.game_window = Some(game_window);
+                }
+                Err(e) => {
+                    log::error!("Failed to create game window: {}", e);
+                }
+            }
+        }
+    }
+
+    fn secondary_window_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        window_id: WindowId,
+        event: &WindowEvent,
+    ) -> bool {
+        // Check if this is our game window
+        if let Some(game_window) = &mut self.game_window {
+            if game_window.id() == window_id {
+                match event {
+                    WindowEvent::CloseRequested => {
+                        self.stop_play_and_close_game_window();
+                        return true;
+                    }
+                    WindowEvent::Resized(size) => {
+                        game_window.resize(*size);
+                        return true;
+                    }
+                    WindowEvent::RedrawRequested => {
+                        // Update game state and get delta
+                        let _delta = game_window.update();
+                        #[cfg(feature = "scripting")]
+                        let delta = _delta;
+                        #[cfg(feature = "scripting")]
+                        let play_time = game_window.play_time();
+
+                        // Run scripts
+                        #[cfg(feature = "scripting")]
+                        {
+                            use crate::scripting::ObjectTransform;
+
+                            // Sync script context with game window objects
+                            self.script_context.clear_objects();
+                            self.script_context.set_time(play_time);
+
+                            for obj in game_window.scene_objects() {
+                                let transform = ObjectTransform {
+                                    position: obj.position.to_array(),
+                                    rotation: obj.rotation.to_array(),
+                                    scale: obj.scale.to_array(),
+                                };
+                                self.script_context.register_object(obj.id, obj.name.clone(), transform, obj.visible);
+                            }
+
+                            // Call _update on all scripts
+                            if let Err(e) = self.script_runtime.call_update(&mut self.script_context, delta) {
+                                log::error!("Script update failed: {}", e);
+                            }
+
+                            // Apply script changes back to game window objects
+                            for (id, new_pos) in self.script_context.drain_position_changes() {
+                                if let Some(obj) = game_window.scene_objects_mut().iter_mut().find(|o| o.id == id) {
+                                    obj.position = glam::Vec3::from_array(new_pos);
+                                }
+                            }
+                            for (id, new_rot) in self.script_context.drain_rotation_changes() {
+                                if let Some(obj) = game_window.scene_objects_mut().iter_mut().find(|o| o.id == id) {
+                                    obj.rotation = glam::Vec3::from_array(new_rot);
+                                }
+                            }
+                            for (id, new_scale) in self.script_context.drain_scale_changes() {
+                                if let Some(obj) = game_window.scene_objects_mut().iter_mut().find(|o| o.id == id) {
+                                    obj.scale = glam::Vec3::from_array(new_scale);
+                                }
+                            }
+                        }
+
+                        // Render
+                        if let Err(e) = game_window.render() {
+                            log::error!("Game window render failed: {:?}", e);
+                        }
+
+                        // Request next frame
+                        game_window.window.request_redraw();
+                        return true;
+                    }
+                    WindowEvent::KeyboardInput { event, .. } => {
+                        // ESC closes game window
+                        if event.state == winit::event::ElementState::Pressed {
+                            if let winit::keyboard::Key::Named(winit::keyboard::NamedKey::Escape) = event.logical_key {
+                                self.stop_play_and_close_game_window();
+                                return true;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        false
+    }
+
+    fn main_window_id(&self) -> Option<WindowId> {
+        self.window.as_ref().map(|w| w.id())
     }
 }
 

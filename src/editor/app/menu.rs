@@ -80,6 +80,16 @@ impl EditorApp {
                     match crate::editor::project::Project::create(folder, &name) {
                         Ok(project) => {
                             self.asset_browser.set_root(project.root.clone());
+
+                            // Set scripts directory for Python runtime
+                            #[cfg(feature = "scripting")]
+                            {
+                                let scripts_dir = project.scripts_dir();
+                                self.script_runtime.set_scripts_dir(scripts_dir.clone());
+                                // Ensure xtreme module exists in scripts directory
+                                self.ensure_xtreme_module(&scripts_dir);
+                            }
+
                             self.current_project = Some(project);
                             log::info!("Created new project");
                         }
@@ -97,6 +107,16 @@ impl EditorApp {
                     match crate::editor::project::Project::open(folder) {
                         Ok(project) => {
                             self.asset_browser.set_root(project.root.clone());
+
+                            // Set scripts directory for Python runtime
+                            #[cfg(feature = "scripting")]
+                            {
+                                let scripts_dir = project.scripts_dir();
+                                self.script_runtime.set_scripts_dir(scripts_dir.clone());
+                                // Ensure xtreme module exists in scripts directory
+                                self.ensure_xtreme_module(&scripts_dir);
+                            }
+
                             let main_scene = project.main_scene_path();
                             if main_scene.exists() {
                                 self.load_scene(main_scene);

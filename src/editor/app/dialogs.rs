@@ -11,7 +11,7 @@ impl EditorApp {
             match action {
                 FileDialogAction::Open => {
                     if let Some(path) = rfd::FileDialog::new()
-                        .add_filter("Scene files", &["ron", "json"])
+                        .add_filter("Xtreme Scene", &["xtrm"])
                         .add_filter("All files", &["*"])
                         .set_title("Open Scene")
                         .pick_file()
@@ -23,18 +23,17 @@ impl EditorApp {
                     let default_name = self.scene_manager.current_path()
                         .and_then(|p| p.file_name())
                         .and_then(|n| n.to_str())
-                        .unwrap_or("scene.ron")
+                        .unwrap_or("scene.xtrm")
                         .to_string();
 
                     if let Some(path) = rfd::FileDialog::new()
-                        .add_filter("RON scene", &["ron"])
-                        .add_filter("JSON scene", &["json"])
+                        .add_filter("Xtreme Scene", &["xtrm"])
                         .set_title("Save Scene")
                         .set_file_name(&default_name)
                         .save_file()
                     {
                         let path = if path.extension().is_none() {
-                            path.with_extension("ron")
+                            path.with_extension("xtrm")
                         } else {
                             path
                         };
@@ -98,108 +97,72 @@ impl EditorApp {
         }
     }
 
-    /// Draw script attachment dialog
-    pub(super) fn draw_script_dialog(&mut self, ctx: &egui::Context) {
+    /// Draw script creation dialog (opens native file save dialog)
+    pub(super) fn draw_script_dialog(&mut self, _ctx: &egui::Context) {
         if !self.show_script_dialog {
             return;
         }
 
-        let mut open = true;
-        let mut attach = false;
-        let mut create = false;
-        let mut open_in_editor = false;
+        // Reset flag immediately
+        self.show_script_dialog = false;
 
-        let file_exists = if !self.script_path_input.is_empty() && self.script_path_input.ends_with(".py") {
-            std::path::Path::new(&self.script_path_input).exists()
+        // Open native file save dialog
+        let default_dir = if let Some(ref project) = self.current_project {
+            project.scripts_dir()
         } else {
-            false
+            PathBuf::from("scripts")
         };
 
-        egui::Window::new("Attach Script")
-            .open(&mut open)
-            .collapsible(false)
-            .resizable(false)
-            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-            .show(ctx, |ui| {
-                ui.label("Enter path to Python script (.py):");
-                ui.add_space(5.0);
+        // Ensure scripts directory exists
+        let _ = std::fs::create_dir_all(&default_dir);
 
-                ui.horizontal(|ui| {
-                    ui.label("Path:");
-                    ui.text_edit_singleline(&mut self.script_path_input);
-                });
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("Python Script", &["py"])
+            .set_title("Create New Script")
+            .set_file_name("new_script.py")
+            .set_directory(&default_dir)
+            .save_file()
+        {
+            // Ensure .py extension
+            let path = if path.extension().is_none() {
+                path.with_extension("py")
+            } else {
+                path
+            };
 
-                ui.add_space(5.0);
+            // Create empty script file with template
+            self.create_script_at_path(&path);
 
-                let valid_path = !self.script_path_input.is_empty() && self.script_path_input.ends_with(".py");
+            // Open in default editor if requested
+            if self.open_script_in_editor {
+                self.open_file_in_editor(&path);
+            }
 
-                if valid_path {
-                    if file_exists {
-                        ui.colored_label(egui::Color32::GREEN, "✓ File exists");
-                    } else {
-                        ui.colored_label(egui::Color32::YELLOW, "⚠ File not found");
-                    }
-                } else {
-                    ui.label("Example: scripts/player.py");
-                }
-
-                ui.add_space(5.0);
-
-                // Checkbox to open in editor
-                ui.checkbox(&mut self.open_script_in_editor, "Open in default editor");
-
-                ui.add_space(10.0);
-
-                ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
-                        self.show_script_dialog = false;
-                        self.script_path_input.clear();
-                    }
-
-                    if valid_path && !file_exists {
-                        if ui.button("Create & Attach").clicked() {
-                            create = true;
-                            attach = true;
-                            open_in_editor = self.open_script_in_editor;
+            // Attach to selected object if scripting is enabled
+            #[cfg(feature = "scripting")]
+            {
+                if let Some(obj_id) = self.selection.first() {
+                    match self.script_runtime.attach_script(path.clone(), obj_id) {
+                        Ok(script_id) => {
+                            if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == obj_id) {
+                                obj.scripts.push(script_id);
+                            }
+                            log::info!("Created and attached script {:?} to object {}", path, obj_id);
+                        }
+                        Err(e) => {
+                            log::error!("Failed to attach script: {}", e);
                         }
                     }
+                }
+            }
 
-                    if ui.add_enabled(valid_path && file_exists, egui::Button::new("Attach")).clicked() {
-                        attach = true;
-                        open_in_editor = self.open_script_in_editor;
-                    }
-                });
-            });
-
-        if create {
-            self.create_script_template();
-            if !PathBuf::from(&self.script_path_input).exists() {
-                attach = false;
-                open_in_editor = false;
+            #[cfg(not(feature = "scripting"))]
+            {
+                log::info!("Created script: {:?}", path);
             }
         }
 
-        // Open in editor if requested
-        if open_in_editor {
-            let path = PathBuf::from(&self.script_path_input);
-            self.open_file_in_editor(&path);
-        }
-
-        #[cfg(feature = "scripting")]
-        if attach {
-            self.attach_script_to_selected();
-        }
-
-        #[cfg(not(feature = "scripting"))]
-        if attach {
-            log::warn!("Scripting feature not enabled");
-            self.show_script_dialog = false;
-        }
-
-        if !open {
-            self.show_script_dialog = false;
-            self.script_path_input.clear();
-        }
+        self.script_path_input.clear();
     }
 
     /// Open a file in the system's default editor
@@ -241,10 +204,12 @@ impl EditorApp {
         }
     }
 
-    fn create_script_template(&self) {
-        let path = PathBuf::from(&self.script_path_input);
+    fn create_script_at_path(&self, path: &PathBuf) {
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
+
+            // Ensure xtreme module files exist in the script directory
+            self.ensure_xtreme_module(parent);
         }
 
         let script_name = path.file_stem()
@@ -269,30 +234,183 @@ def _physics_update(ctx, delta):
     pass
 "#, script_name, script_name);
 
-        match std::fs::write(&path, template) {
-            Ok(_) => log::info!("Created script template: {:?}", path),
+        match std::fs::write(path, template) {
+            Ok(_) => log::info!("Created script: {:?}", path),
             Err(e) => log::error!("Failed to create script: {}", e),
         }
     }
 
-    #[cfg(feature = "scripting")]
-    fn attach_script_to_selected(&mut self) {
-        if let Some(obj_id) = self.selection.first() {
-            let path = PathBuf::from(&self.script_path_input);
-            match self.script_runtime.attach_script(path, obj_id) {
-                Ok(script_id) => {
-                    if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == obj_id) {
-                        obj.scripts.push(script_id);
-                    }
-                    log::info!("Attached script {} to object {}", script_id, obj_id);
-                }
-                Err(e) => {
-                    log::error!("Failed to attach script: {}", e);
-                }
+    /// Ensure xtreme.py and xtreme.pyi exist in the given directory
+    pub(crate) fn ensure_xtreme_module(&self, dir: &std::path::Path) {
+        let xtreme_py = dir.join("xtreme.py");
+        let xtreme_pyi = dir.join("xtreme.pyi");
+
+        // Create xtreme.py if it doesn't exist
+        if !xtreme_py.exists() {
+            let content = r#"# xtreme.py - Xtreme Engine Python API
+# This module is injected by Rust at runtime via pyo3
+# This file provides mock implementations for IDE support
+
+from typing import Dict, List, Any, Optional
+
+def get_position(ctx: Dict[str, Any], object_id: Optional[int] = None) -> List[float]:
+    """Returns the position [x, y, z] of the object"""
+    return ctx.get("position", [0.0, 0.0, 0.0])
+
+def set_position(ctx: Dict[str, Any], x: float, y: float, z: float) -> None:
+    """Sets the position of the object"""
+    ctx["position"] = [x, y, z]
+    ctx["_position_changed"] = True
+
+def translate(ctx: Dict[str, Any], dx: float, dy: float, dz: float) -> None:
+    """Moves the object by (dx, dy, dz)"""
+    pos = ctx.get("position", [0.0, 0.0, 0.0])
+    pos[0] += dx
+    pos[1] += dy
+    pos[2] += dz
+    ctx["position"] = pos
+    ctx["_position_changed"] = True
+
+def get_rotation(ctx: Dict[str, Any]) -> List[float]:
+    """Returns the rotation [x, y, z] in radians"""
+    return ctx.get("rotation", [0.0, 0.0, 0.0])
+
+def set_rotation(ctx: Dict[str, Any], x: float, y: float, z: float) -> None:
+    """Sets the rotation of the object in radians"""
+    ctx["rotation"] = [x, y, z]
+    ctx["_rotation_changed"] = True
+
+def rotate(ctx: Dict[str, Any], rx: float, ry: float, rz: float) -> None:
+    """Rotates the object by (rx, ry, rz) in radians"""
+    rot = ctx.get("rotation", [0.0, 0.0, 0.0])
+    rot[0] += rx
+    rot[1] += ry
+    rot[2] += rz
+    ctx["rotation"] = rot
+    ctx["_rotation_changed"] = True
+
+def get_scale(ctx: Dict[str, Any]) -> List[float]:
+    """Returns the scale [x, y, z]"""
+    return ctx.get("scale", [1.0, 1.0, 1.0])
+
+def set_scale(ctx: Dict[str, Any], x: float, y: float, z: float) -> None:
+    """Sets the scale of the object"""
+    ctx["scale"] = [x, y, z]
+    ctx["_scale_changed"] = True
+
+def get_time(ctx: Dict[str, Any]) -> float:
+    """Returns the elapsed time since play started"""
+    return ctx.get("time", 0.0)
+
+def is_key_pressed(ctx: Dict[str, Any], key: str) -> bool:
+    """Returns true if the key is currently pressed"""
+    input_state = ctx.get("input", {})
+    keys = input_state.get("keys", [])
+    return key in keys
+
+def is_key_just_pressed(ctx: Dict[str, Any], key: str) -> bool:
+    """Returns true if the key was just pressed this frame"""
+    input_state = ctx.get("input", {})
+    keys = input_state.get("keys_just_pressed", [])
+    return key in keys
+
+def log_info(message: str) -> None:
+    """Log an info message"""
+    print(f"[INFO] {message}")
+
+def log_warn(message: str) -> None:
+    """Log a warning message"""
+    print(f"[WARN] {message}")
+
+def log_error(message: str) -> None:
+    """Log an error message"""
+    print(f"[ERROR] {message}")
+"#;
+            if let Err(e) = std::fs::write(&xtreme_py, content) {
+                log::error!("Failed to create xtreme.py: {}", e);
+            } else {
+                log::info!("Created xtreme.py module");
             }
         }
-        self.show_script_dialog = false;
-        self.script_path_input.clear();
+
+        // Create xtreme.pyi if it doesn't exist
+        if !xtreme_pyi.exists() {
+            let content = r#"# xtreme.pyi - Type stubs for IDE autocompletion
+from typing import Dict, List, Any, Optional
+
+def get_position(ctx: Dict[str, Any], object_id: Optional[int] = None) -> List[float]: ...
+def set_position(ctx: Dict[str, Any], x: float, y: float, z: float) -> None: ...
+def translate(ctx: Dict[str, Any], dx: float, dy: float, dz: float) -> None: ...
+def get_rotation(ctx: Dict[str, Any]) -> List[float]: ...
+def set_rotation(ctx: Dict[str, Any], x: float, y: float, z: float) -> None: ...
+def rotate(ctx: Dict[str, Any], rx: float, ry: float, rz: float) -> None: ...
+def get_scale(ctx: Dict[str, Any]) -> List[float]: ...
+def set_scale(ctx: Dict[str, Any], x: float, y: float, z: float) -> None: ...
+def get_time(ctx: Dict[str, Any]) -> float: ...
+def is_key_pressed(ctx: Dict[str, Any], key: str) -> bool: ...
+def is_key_just_pressed(ctx: Dict[str, Any], key: str) -> bool: ...
+def log_info(message: str) -> None: ...
+def log_warn(message: str) -> None: ...
+def log_error(message: str) -> None: ...
+"#;
+            if let Err(e) = std::fs::write(&xtreme_pyi, content) {
+                log::error!("Failed to create xtreme.pyi: {}", e);
+            } else {
+                log::info!("Created xtreme.pyi stubs");
+            }
+        }
+    }
+
+    /// Draw attach script dialog (opens native file open dialog)
+    pub(super) fn draw_attach_script_dialog(&mut self, _ctx: &egui::Context) {
+        if !self.show_attach_script_dialog {
+            return;
+        }
+
+        // Reset flag immediately
+        self.show_attach_script_dialog = false;
+
+        // Open native file open dialog
+        let default_dir = if let Some(ref project) = self.current_project {
+            project.scripts_dir()
+        } else {
+            PathBuf::from("scripts")
+        };
+
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("Python Script", &["py"])
+            .set_title("Attach Existing Script")
+            .set_directory(&default_dir)
+            .pick_file()
+        {
+            // Ensure xtreme module exists in the script's directory
+            if let Some(parent) = path.parent() {
+                self.ensure_xtreme_module(parent);
+            }
+
+            // Attach to selected object if scripting is enabled
+            #[cfg(feature = "scripting")]
+            {
+                if let Some(obj_id) = self.selection.first() {
+                    match self.script_runtime.attach_script(path.clone(), obj_id) {
+                        Ok(script_id) => {
+                            if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == obj_id) {
+                                obj.scripts.push(script_id);
+                            }
+                            log::info!("Attached script {:?} to object {}", path, obj_id);
+                        }
+                        Err(e) => {
+                            log::error!("Failed to attach script: {}", e);
+                        }
+                    }
+                }
+            }
+
+            #[cfg(not(feature = "scripting"))]
+            {
+                log::info!("Would attach script: {:?}", path);
+            }
+        }
     }
 
     /// Draw project properties dialog

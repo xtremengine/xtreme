@@ -4,69 +4,33 @@
 use crate::scripting::ObjectTransform;
 use super::EditorApp;
 
-/// Splash screen duration in seconds
-const SPLASH_DURATION: f32 = 2.0;
-
 impl EditorApp {
-    /// Start play mode (shows splash first)
+    /// Start play mode (opens game window)
     pub fn start_play(&mut self) {
-        if self.is_playing || self.show_splash {
+        if self.is_playing || self.pending_game_start || self.game_window.is_some() {
             return;
         }
 
-        // Show splash screen first
-        self.show_splash = true;
-        self.splash_start_time = Some(std::time::Instant::now());
-
-        // Save current scene state
-        self.saved_scene_state = self.scene_objects.clone();
-
-        log::info!("Showing splash screen...");
+        // Set flag to create game window in next frame
+        // (window creation needs event loop access)
+        self.pending_game_start = true;
+        log::info!("Requesting game window creation...");
     }
 
-    /// Actually start play mode (called after splash)
-    fn enter_play_mode(&mut self) {
-        self.show_splash = false;
-        self.play_time = 0.0;
-        self.last_frame_instant = Some(std::time::Instant::now());
-        self.is_playing = true;
-
-        // Call _ready on all scripts
-        #[cfg(feature = "scripting")]
-        {
-            self.sync_script_context();
-            if let Err(e) = self.script_runtime.call_ready(&mut self.script_context) {
-                log::error!("Script ready failed: {}", e);
-            }
-        }
-
-        log::info!("Play mode started");
-    }
-
-    /// Update splash screen and transition to play mode
-    pub fn update_splash(&mut self) {
-        if !self.show_splash {
-            return;
-        }
-
-        if let Some(start) = self.splash_start_time {
-            let elapsed = start.elapsed().as_secs_f32();
-            if elapsed >= SPLASH_DURATION {
-                self.enter_play_mode();
-            }
-        }
-    }
-
-    /// Stop play mode and reset scene
+    /// Stop play mode and close game window
     pub fn stop_play(&mut self) {
-        if !self.is_playing && !self.show_splash {
+        if !self.is_playing && self.game_window.is_none() {
             return;
         }
 
-        // Cancel splash if showing
-        if self.show_splash {
-            self.show_splash = false;
-            self.splash_start_time = None;
+        self.stop_play_and_close_game_window();
+    }
+
+    /// Internal method to stop play and close game window
+    pub(crate) fn stop_play_and_close_game_window(&mut self) {
+        // Close game window
+        if let Some(mut game_window) = self.game_window.take() {
+            game_window.close();
         }
 
         // Restore scene state
@@ -74,13 +38,14 @@ impl EditorApp {
         self.play_time = 0.0;
         self.last_frame_instant = None;
         self.is_playing = false;
+        self.pending_game_start = false;
 
         log::info!("Play mode stopped, scene reset");
     }
 
     /// Toggle play mode
     pub fn toggle_play(&mut self) {
-        if self.is_playing {
+        if self.is_playing || self.game_window.is_some() {
             self.stop_play();
         } else {
             self.start_play();

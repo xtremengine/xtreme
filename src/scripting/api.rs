@@ -152,10 +152,12 @@ impl ScriptContext {
                 if let Ok(Some(pos)) = dict.get_item("position") {
                     if let Ok(pos_vec) = pos.extract::<Vec<f32>>() {
                         if pos_vec.len() == 3 {
-                            self.position_changes.push((
-                                object_id,
-                                [pos_vec[0], pos_vec[1], pos_vec[2]]
-                            ));
+                            let new_pos = [pos_vec[0], pos_vec[1], pos_vec[2]];
+                            self.position_changes.push((object_id, new_pos));
+                            // Update transforms so subsequent scripts see the change
+                            if let Some(transform) = self.transforms.get_mut(&object_id) {
+                                transform.position = new_pos;
+                            }
                         }
                     }
                 }
@@ -168,10 +170,12 @@ impl ScriptContext {
                 if let Ok(Some(rot)) = dict.get_item("rotation") {
                     if let Ok(rot_vec) = rot.extract::<Vec<f32>>() {
                         if rot_vec.len() == 3 {
-                            self.rotation_changes.push((
-                                object_id,
-                                [rot_vec[0], rot_vec[1], rot_vec[2]]
-                            ));
+                            let new_rot = [rot_vec[0], rot_vec[1], rot_vec[2]];
+                            self.rotation_changes.push((object_id, new_rot));
+                            // Update transforms so subsequent scripts see the change
+                            if let Some(transform) = self.transforms.get_mut(&object_id) {
+                                transform.rotation = new_rot;
+                            }
                         }
                     }
                 }
@@ -184,10 +188,12 @@ impl ScriptContext {
                 if let Ok(Some(scale)) = dict.get_item("scale") {
                     if let Ok(scale_vec) = scale.extract::<Vec<f32>>() {
                         if scale_vec.len() == 3 {
-                            self.scale_changes.push((
-                                object_id,
-                                [scale_vec[0], scale_vec[1], scale_vec[2]]
-                            ));
+                            let new_scale = [scale_vec[0], scale_vec[1], scale_vec[2]];
+                            self.scale_changes.push((object_id, new_scale));
+                            // Update transforms so subsequent scripts see the change
+                            if let Some(transform) = self.transforms.get_mut(&object_id) {
+                                transform.scale = new_scale;
+                            }
                         }
                     }
                 }
@@ -273,6 +279,18 @@ fn xtreme_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(vec![0.0, 0.0, 0.0])
     }
 
+    /// Set position directly
+    #[pyfunction]
+    fn set_position(ctx: &Bound<'_, PyDict>, x: f32, y: f32, z: f32) -> PyResult<()> {
+        let py = ctx.py();
+        let new_pos = vec![x, y, z];
+        if let Ok(new_pos_list) = PyList::new(py, &new_pos) {
+            ctx.set_item("position", new_pos_list)?;
+            ctx.set_item("_position_changed", true)?;
+        }
+        Ok(())
+    }
+
     /// Translate an object by delta
     #[pyfunction]
     fn translate(ctx: &Bound<'_, PyDict>, dx: f32, dy: f32, dz: f32) -> PyResult<()> {
@@ -287,6 +305,15 @@ fn xtreme_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
             }
         }
         Ok(())
+    }
+
+    /// Get elapsed time since play started
+    #[pyfunction]
+    fn get_time(ctx: &Bound<'_, PyDict>) -> PyResult<f32> {
+        if let Some(time) = ctx.get_item("time").ok().flatten() {
+            return Ok(time.extract()?);
+        }
+        Ok(0.0)
     }
 
     /// Rotate an object
@@ -349,7 +376,9 @@ fn xtreme_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     }
 
     m.add_function(wrap_pyfunction!(get_position, m)?)?;
+    m.add_function(wrap_pyfunction!(set_position, m)?)?;
     m.add_function(wrap_pyfunction!(translate, m)?)?;
+    m.add_function(wrap_pyfunction!(get_time, m)?)?;
     m.add_function(wrap_pyfunction!(rotate, m)?)?;
     m.add_function(wrap_pyfunction!(is_key_pressed, m)?)?;
     m.add_function(wrap_pyfunction!(is_key_just_pressed, m)?)?;

@@ -1,17 +1,20 @@
-# xtreme.py - Mock module for development/testing outside the engine
-# Em runtime, o modulo real e injetado pelo Rust via pyo3
-# Este arquivo permite testar scripts localmente com Python puro
+# xtreme.py - Xtreme Engine Python API
+# This module is injected by Rust at runtime via pyo3
+# This file provides mock implementations for IDE support
 
 from typing import Dict, List, Any, Optional
 
-_mock_mode = True
-
 def get_position(ctx: Dict[str, Any], object_id: Optional[int] = None) -> List[float]:
-    """Retorna a posicao [x, y, z] do objeto"""
+    """Returns the position [x, y, z] of the object"""
     return ctx.get("position", [0.0, 0.0, 0.0])
 
+def set_position(ctx: Dict[str, Any], x: float, y: float, z: float) -> None:
+    """Sets the position of the object"""
+    ctx["position"] = [x, y, z]
+    ctx["_position_changed"] = True
+
 def translate(ctx: Dict[str, Any], dx: float, dy: float, dz: float) -> None:
-    """Move o objeto por (dx, dy, dz)"""
+    """Moves the object by (dx, dy, dz)"""
     pos = ctx.get("position", [0.0, 0.0, 0.0])
     pos[0] += dx
     pos[1] += dy
@@ -19,8 +22,17 @@ def translate(ctx: Dict[str, Any], dx: float, dy: float, dz: float) -> None:
     ctx["position"] = pos
     ctx["_position_changed"] = True
 
+def get_rotation(ctx: Dict[str, Any]) -> List[float]:
+    """Returns the rotation [x, y, z] in radians"""
+    return ctx.get("rotation", [0.0, 0.0, 0.0])
+
+def set_rotation(ctx: Dict[str, Any], x: float, y: float, z: float) -> None:
+    """Sets the rotation of the object in radians"""
+    ctx["rotation"] = [x, y, z]
+    ctx["_rotation_changed"] = True
+
 def rotate(ctx: Dict[str, Any], rx: float, ry: float, rz: float) -> None:
-    """Rotaciona o objeto por (rx, ry, rz) em radianos"""
+    """Rotates the object by (rx, ry, rz) in radians"""
     rot = ctx.get("rotation", [0.0, 0.0, 0.0])
     rot[0] += rx
     rot[1] += ry
@@ -28,39 +40,39 @@ def rotate(ctx: Dict[str, Any], rx: float, ry: float, rz: float) -> None:
     ctx["rotation"] = rot
     ctx["_rotation_changed"] = True
 
+def get_scale(ctx: Dict[str, Any]) -> List[float]:
+    """Returns the scale [x, y, z]"""
+    return ctx.get("scale", [1.0, 1.0, 1.0])
+
+def set_scale(ctx: Dict[str, Any], x: float, y: float, z: float) -> None:
+    """Sets the scale of the object"""
+    ctx["scale"] = [x, y, z]
+    ctx["_scale_changed"] = True
+
+def get_time(ctx: Dict[str, Any]) -> float:
+    """Returns the elapsed time since play started"""
+    return ctx.get("time", 0.0)
+
 def is_key_pressed(ctx: Dict[str, Any], key: str) -> bool:
-    """Verifica se uma tecla esta pressionada"""
+    """Returns true if the key is currently pressed"""
     input_state = ctx.get("input", {})
     keys = input_state.get("keys", [])
     return key in keys
 
 def is_key_just_pressed(ctx: Dict[str, Any], key: str) -> bool:
-    """Verifica se uma tecla foi pressionada neste frame"""
+    """Returns true if the key was just pressed this frame"""
     input_state = ctx.get("input", {})
     keys = input_state.get("keys_just_pressed", [])
     return key in keys
 
 def log_info(message: str) -> None:
-    """Log de informacao"""
+    """Log an info message"""
     print(f"[INFO] {message}")
 
 def log_warn(message: str) -> None:
-    """Log de aviso"""
+    """Log a warning message"""
     print(f"[WARN] {message}")
 
 def log_error(message: str) -> None:
-    """Log de erro"""
+    """Log an error message"""
     print(f"[ERROR] {message}")
-
-
-# Teste local
-if __name__ == "__main__":
-    print("Testando modulo xtreme mock...")
-    ctx = {"position": [0.0, 0.5, 0.0], "rotation": [0.0, 0.0, 0.0]}
-
-    log_info("Posicao inicial: " + str(get_position(ctx)))
-    translate(ctx, 1.0, 0.0, 0.0)
-    log_info("Apos translate(1,0,0): " + str(get_position(ctx)))
-    rotate(ctx, 0.0, 0.1, 0.0)
-    log_info("Apos rotate(0,0.1,0): " + str(ctx["rotation"]))
-    print("Mock OK!")

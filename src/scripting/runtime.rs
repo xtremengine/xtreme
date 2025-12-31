@@ -21,6 +21,8 @@ pub struct ScriptRuntime {
     next_id: ScriptId,
     /// Whether runtime is initialized
     initialized: bool,
+    /// Scripts directory path (from project)
+    scripts_dir: Option<PathBuf>,
 }
 
 impl Default for ScriptRuntime {
@@ -38,7 +40,25 @@ impl ScriptRuntime {
             pending_ready: Vec::new(),
             next_id: 1,
             initialized: false,
+            scripts_dir: None,
         }
+    }
+
+    /// Set the scripts directory (call before initialize or attach_script)
+    pub fn set_scripts_dir(&mut self, dir: PathBuf) {
+        // If already initialized, add new path to Python
+        if self.initialized {
+            Python::with_gil(|py| {
+                if let Ok(sys) = py.import("sys") {
+                    if let Ok(path) = sys.getattr("path") {
+                        let dir_str = dir.to_string_lossy().to_string();
+                        let _ = path.call_method1("insert", (0, dir_str));
+                        log::info!("Added scripts directory to Python path: {:?}", dir);
+                    }
+                }
+            });
+        }
+        self.scripts_dir = Some(dir);
     }
 
     /// Initialize the Python interpreter
@@ -54,7 +74,14 @@ impl ScriptRuntime {
             let path = sys.getattr("path")?;
 
             // Add scripts directory to Python path
-            path.call_method1("append", ("scripts",))?;
+            if let Some(ref scripts_dir) = self.scripts_dir {
+                let dir_str = scripts_dir.to_string_lossy().to_string();
+                path.call_method1("insert", (0, &dir_str))?;
+                log::info!("Python path: {:?}", scripts_dir);
+            } else {
+                // Fallback to local scripts folder
+                path.call_method1("append", ("scripts",))?;
+            }
 
             log::info!("Python scripting runtime initialized");
             Ok::<(), PyErr>(())

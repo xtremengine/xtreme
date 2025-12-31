@@ -288,7 +288,7 @@ mod tests {
         manager.mark_dirty();
         assert!(manager.is_dirty());
 
-        manager.set_path("test_scene.ron".into());
+        manager.set_path("test_scene.xtrm".into());
         assert!(!manager.is_dirty());
         assert_eq!(manager.scene_name(), "test_scene");
     }

@@ -35,6 +35,7 @@ mod shortcuts;
 mod scene;
 mod snap;
 mod prefab;
+mod game_window;
 pub mod mesh;
 pub mod project;
 

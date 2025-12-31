@@ -96,6 +96,7 @@ impl Script {
 /// A compiled script instance ready for execution
 pub struct ScriptInstance {
     /// Script ID
+    #[allow(dead_code)]
     pub id: ScriptId,
     /// Object ID this is attached to
     pub object_id: u32,
@@ -166,6 +167,7 @@ impl ScriptInstance {
     }
 
     /// Call a custom function by name
+    #[allow(dead_code)]
     pub fn call_function<'py, A>(&self, py: Python<'py>, name: &str, args: A) -> Result<Bound<'py, PyAny>, ScriptError>
     where
         A: IntoPyObject<'py>,
@@ -179,6 +181,7 @@ impl ScriptInstance {
     }
 
     /// Check if a function exists in the script
+    #[allow(dead_code)]
     pub fn has_function(&self, py: Python<'_>, name: &str) -> bool {
         let module = self.module.bind(py);
         module.getattr(name).is_ok()

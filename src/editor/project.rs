@@ -31,7 +31,7 @@ impl Default for ProjectConfig {
             version: "0.1.0".to_string(),
             author: String::new(),
             description: String::new(),
-            main_scene: "scenes/main.ron".to_string(),
+            main_scene: "scenes/main.xtrm".to_string(),
             window_width: 1280,
             window_height: 720,
             splash_duration: 2.0,
@@ -91,7 +91,7 @@ impl Project {
 
         // Create project config
         let config = ProjectConfig::new(name);
-        let config_path = root.join("project.ron");
+        let config_path = root.join("project.xtrm");
         config.save(&config_path)?;
 
         log::info!("Created new project '{}' at {:?}", name, root);
@@ -101,9 +101,9 @@ impl Project {
 
     /// Open an existing project
     pub fn open(root: PathBuf) -> Result<Self, String> {
-        let config_path = root.join("project.ron");
+        let config_path = root.join("project.xtrm");
         if !config_path.exists() {
-            return Err(format!("No project.ron found at {:?}", root));
+            return Err(format!("No project.xtrm found at {:?}", root));
         }
 
         let config = ProjectConfig::load(&config_path)?;
@@ -115,7 +115,7 @@ impl Project {
 
     /// Save project config
     pub fn save(&self) -> Result<(), String> {
-        let config_path = self.root.join("project.ron");
+        let config_path = self.root.join("project.xtrm");
         self.config.save(&config_path)
     }
 

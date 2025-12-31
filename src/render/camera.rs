@@ -14,6 +14,7 @@ pub trait Camera {
 }
 
 /// Isometric camera with orthographic projection
+#[derive(Clone)]
 pub struct IsometricCamera {
     pub target: Vec3,
     pub distance: f32,

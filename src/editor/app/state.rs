@@ -14,6 +14,7 @@ use crate::editor::shortcuts::ShortcutManager;
 use crate::editor::scene::SceneManager;
 use crate::editor::snap::SnapSettings;
 use crate::editor::prefab::Prefab;
+use crate::editor::game_window::GameWindow;
 #[cfg(feature = "scripting")]
 use crate::scripting::{ScriptRuntime, ScriptContext};
 
@@ -99,8 +100,10 @@ pub struct EditorApp {
     /// Script context for passing data to scripts
     #[cfg(feature = "scripting")]
     pub(crate) script_context: ScriptContext,
-    /// Whether script dialog is open
+    /// Whether create script dialog is open
     pub(crate) show_script_dialog: bool,
+    /// Whether attach script dialog is open
+    pub(crate) show_attach_script_dialog: bool,
     /// Script path input for dialog
     pub(crate) script_path_input: String,
     /// Whether to open script in editor after creation
@@ -113,16 +116,23 @@ pub struct EditorApp {
     pub(crate) play_time: f32,
     /// Last frame instant for delta calculation
     pub(crate) last_frame_instant: Option<std::time::Instant>,
-    /// Whether to show splash screen
+    /// Whether to show splash screen (deprecated - now using game window)
+    #[allow(dead_code)]
     pub(crate) show_splash: bool,
-    /// When splash started
+    /// When splash started (deprecated - now using game window)
+    #[allow(dead_code)]
     pub(crate) splash_start_time: Option<std::time::Instant>,
-    /// Splash texture handle
+    /// Splash texture handle (deprecated - now using game window)
+    #[allow(dead_code)]
     pub(crate) splash_texture: Option<egui::TextureHandle>,
     /// Current project
     pub(crate) current_project: Option<crate::editor::project::Project>,
     /// Show project properties dialog
     pub(crate) show_project_dialog: bool,
+    /// Game window for play mode
+    pub(crate) game_window: Option<GameWindow>,
+    /// Pending game window creation (needs event loop)
+    pub(crate) pending_game_start: bool,
 }
 
 impl EditorApp {
@@ -180,6 +190,7 @@ impl EditorApp {
             #[cfg(feature = "scripting")]
             script_context: ScriptContext::new(),
             show_script_dialog: false,
+            show_attach_script_dialog: false,
             script_path_input: String::new(),
             open_script_in_editor: true,
             is_playing: false,
@@ -191,6 +202,8 @@ impl EditorApp {
             splash_texture: None,
             current_project: None,
             show_project_dialog: false,
+            game_window: None,
+            pending_game_start: false,
         }
     }
 }

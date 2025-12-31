@@ -106,6 +106,26 @@ pub trait App: 'static {
 
     /// Called when the window is closing
     fn shutdown(&mut self) {}
+
+    /// Handle pending window creation (called each frame)
+    /// This allows the app to create secondary windows like game preview
+    fn handle_pending_windows(&mut self, _event_loop: &ActiveEventLoop) {}
+
+    /// Handle events for secondary windows
+    /// Returns true if the event was handled
+    fn secondary_window_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _window_id: WindowId,
+        _event: &WindowEvent,
+    ) -> bool {
+        false
+    }
+
+    /// Get the main window ID (if set)
+    fn main_window_id(&self) -> Option<WindowId> {
+        None
+    }
 }
 
 /// Application handler for winit
@@ -168,9 +188,17 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
-        _window_id: WindowId,
+        window_id: WindowId,
         event: WindowEvent,
     ) {
+        // Check if this is a secondary window event
+        let main_window_id = self.window.as_ref().map(|w| w.id());
+        if main_window_id.is_some() && Some(window_id) != main_window_id {
+            // This is a secondary window event
+            self.app.secondary_window_event(event_loop, window_id, &event);
+            return;
+        }
+
         // Let app handle raw event first (for egui)
         if let Some(window) = &self.window {
             if self.app.raw_event(window, &event) {
@@ -267,7 +295,10 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        // Handle pending window creation
+        self.app.handle_pending_windows(event_loop);
+
         if let Some(window) = &self.window {
             window.request_redraw();
         }
