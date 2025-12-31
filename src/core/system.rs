@@ -265,7 +265,6 @@ impl SystemSet {
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU32, Ordering};
-    use std::sync::Arc;
 
     #[test]
     fn test_scheduler_basic() {

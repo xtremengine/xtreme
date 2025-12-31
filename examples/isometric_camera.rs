@@ -52,7 +52,7 @@ fn main() {
     println!("\n=== Tile Grid (5x5) ===");
     for row in 0..5 {
         for col in 0..5 {
-            let coord = IsometricCoord::flat(col, row);
+            let _coord = IsometricCoord::flat(col, row);
             let world = Vec3::new(col as f32, 0.0, row as f32);
             let screen = world_to_screen(world, &config);
             print!("({:4.0},{:4.0}) ", screen.x, screen.y);

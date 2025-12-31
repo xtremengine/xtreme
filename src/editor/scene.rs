@@ -260,7 +260,6 @@ impl SceneManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
     use tempfile::NamedTempFile;
 
     #[test]
@@ -279,7 +278,7 @@ mod tests {
             camera: None,
         });
 
-        let mut temp = NamedTempFile::new().unwrap();
+        let temp = NamedTempFile::new().unwrap();
         let path = temp.path().to_owned();
 
         scene.save_ron(&path).unwrap();

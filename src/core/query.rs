@@ -226,8 +226,8 @@ mod tests {
     fn test_query_one() {
         let mut world = World::new();
 
-        let e1 = world.spawn_with(Position { x: 1.0, y: 2.0 });
-        let e2 = world.spawn_with(Position { x: 3.0, y: 4.0 });
+        let _e1 = world.spawn_with(Position { x: 1.0, y: 2.0 });
+        let _e2 = world.spawn_with(Position { x: 3.0, y: 4.0 });
         world.spawn_empty(); // No Position
 
         let results: Vec<_> = world.query_one::<Position>().collect();
@@ -244,7 +244,7 @@ mod tests {
         world.insert(e1, Velocity { dx: 0.5, dy: 0.5 });
 
         // Entity with only Position
-        let e2 = world.spawn_with(Position { x: 3.0, y: 4.0 });
+        let _e2 = world.spawn_with(Position { x: 3.0, y: 4.0 });
 
         let results: Vec<_> = query_two::<Position, Velocity>(&world).collect();
         assert_eq!(results.len(), 1);
