@@ -341,7 +341,7 @@ fn xtreme_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     #[pyfunction]
     fn is_key_pressed(ctx: &Bound<'_, PyDict>, key: &str) -> PyResult<bool> {
         if let Some(input) = ctx.get_item("input").ok().flatten() {
-            let input: &Bound<'_, PyDict> = input.downcast()?;
+            let input: &Bound<'_, PyDict> = input.cast()?;
             if let Some(keys) = input.get_item("keys").ok().flatten() {
                 let keys: Vec<String> = keys.extract()?;
                 return Ok(keys.contains(&key.to_string()));
@@ -354,7 +354,7 @@ fn xtreme_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     #[pyfunction]
     fn is_key_just_pressed(ctx: &Bound<'_, PyDict>, key: &str) -> PyResult<bool> {
         if let Some(input) = ctx.get_item("input").ok().flatten() {
-            let input: &Bound<'_, PyDict> = input.downcast()?;
+            let input: &Bound<'_, PyDict> = input.cast()?;
             if let Some(keys) = input.get_item("keys_just_pressed").ok().flatten() {
                 let keys: Vec<String> = keys.extract()?;
                 return Ok(keys.contains(&key.to_string()));

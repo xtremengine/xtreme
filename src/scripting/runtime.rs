@@ -48,7 +48,7 @@ impl ScriptRuntime {
     pub fn set_scripts_dir(&mut self, dir: PathBuf) {
         // If already initialized, add new path to Python
         if self.initialized {
-            Python::with_gil(|py| {
+            Python::attach(|py| {
                 if let Ok(sys) = py.import("sys") {
                     if let Ok(path) = sys.getattr("path") {
                         let dir_str = dir.to_string_lossy().to_string();
@@ -68,7 +68,7 @@ impl ScriptRuntime {
         }
 
         // pyo3 auto-initializes with the feature, but we can do setup here
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             // Add custom modules or setup paths
             let sys = py.import("sys")?;
             let path = sys.getattr("path")?;
@@ -113,7 +113,7 @@ impl ScriptRuntime {
         );
 
         // Compile the script
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let instance = ScriptInstance::new(py, &script)?;
             self.instances.insert(id, instance);
             Ok::<(), ScriptError>(())
@@ -148,7 +148,7 @@ impl ScriptRuntime {
         );
 
         // Compile the script
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let instance = ScriptInstance::new(py, &script)?;
             self.instances.insert(id, instance);
             Ok::<(), ScriptError>(())
@@ -181,7 +181,7 @@ impl ScriptRuntime {
     pub fn call_ready(&mut self, context: &mut ScriptContext) -> Result<(), ScriptError> {
         let pending: Vec<ScriptId> = self.pending_ready.drain(..).collect();
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             for id in pending {
                 if let Some(instance) = self.instances.get_mut(&id) {
                     let ctx_dict = context.to_py_dict(py);
@@ -196,7 +196,7 @@ impl ScriptRuntime {
 
     /// Call _update on all active scripts
     pub fn call_update(&self, context: &mut ScriptContext, delta: f32) -> Result<(), ScriptError> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             for (id, instance) in &self.instances {
                 // Set current object ID in context
                 context.set_current_object(instance.object_id);
@@ -217,7 +217,7 @@ impl ScriptRuntime {
         context: &mut ScriptContext,
         delta: f32,
     ) -> Result<(), ScriptError> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             for (id, instance) in &self.instances {
                 context.set_current_object(instance.object_id);
                 let ctx_dict = context.to_py_dict(py);
@@ -239,7 +239,7 @@ impl ScriptRuntime {
         script.reload()?;
 
         // Recompile
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let instance = ScriptInstance::new(py, script)?;
             self.instances.insert(script_id, instance);
             Ok::<(), ScriptError>(())
