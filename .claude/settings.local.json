@@ -15,7 +15,16 @@
       "Bash(powershell.exe -Command:*)",
       "WebFetch(domain:docs.rs)",
       "Bash(cargo run:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(cd:*)",
+      "Bash(dir:*)",
+      "Bash(cargo audit:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(cargo test:*)",
+      "Bash(set RUSTFLAGS=-D warnings:*)"
     ]
   }
 }
