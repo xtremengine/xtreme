@@ -12,7 +12,8 @@
       "Bash(wc:*)",
       "Bash(powershell.exe -Command \"New-Item -ItemType Directory -Force -Path ''D:\\\\dev\\\\game\\\\xtreme\\\\src\\\\editor\\\\app''\")",
       "Bash(powershell.exe -Command \"Remove-Item -Path ''D:\\\\dev\\\\game\\\\xtreme\\\\src\\\\editor\\\\app.rs'' -Force\")",
-      "Bash(powershell.exe -Command:*)"
+      "Bash(powershell.exe -Command:*)",
+      "WebFetch(domain:docs.rs)"
     ]
   }
 }

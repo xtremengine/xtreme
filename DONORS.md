@@ -32,9 +32,7 @@ Thank you to all the generous donors who support the development of Xtreme Engin
 
 If you'd like to support the development of Xtreme Engine, you can donate through:
 
-- [GitHub Sponsors](https://github.com/sponsors/)
-- [Ko-fi](https://ko-fi.com/your-username)
-- [Patreon](https://patreon.com/your-username)
+- [GitHub Sponsors](https://github.com/sponsors/xtremengine)
 
 All donations go directly towards:
 

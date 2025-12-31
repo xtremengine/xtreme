@@ -29,7 +29,8 @@ impl EditorApp {
             .fixed_pos(egui::pos2(0.0, 0.0))
             .order(egui::Order::Foreground)
             .show(ctx, |ui| {
-                let screen = ctx.input(|i| i.viewport().inner_rect).unwrap_or(egui::Rect::NOTHING);
+                let screen = ctx.input(|i| i.viewport().inner_rect)
+                    .unwrap_or(egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(800.0, 600.0)));
                 ui.allocate_response(screen.size(), egui::Sense::hover());
 
                 // Dark background
