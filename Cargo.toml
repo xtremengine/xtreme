@@ -1,0 +1,73 @@
+[package]
+name = "xtreme-engine"
+version = "0.1.0"
+edition = "2021"
+authors = ["Felipe Maya"]
+description = "A modular ECS game engine with isometric 3D rendering and ML-powered AI"
+license = "MIT"
+repository = "https://github.com/your-username/xtreme-engine"
+
+[lib]
+name = "xtreme"
+path = "src/lib.rs"
+
+[[example]]
+name = "hello_triangle"
+path = "examples/hello_triangle.rs"
+
+[[example]]
+name = "isometric_camera"
+path = "examples/isometric_camera.rs"
+
+[[example]]
+name = "editor"
+path = "examples/editor.rs"
+
+[dependencies]
+# Rendering
+wgpu = "23"
+winit = "0.30"
+glam = { version = "0.29", features = ["bytemuck"] }
+bytemuck = { version = "1.19", features = ["derive"] }
+
+# Editor UI
+egui = "0.30"
+egui-wgpu = "0.30"
+egui-winit = "0.30"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ron = "0.8"
+
+# ML Runtime
+ort = { version = "2.0.0-rc.10", optional = true }
+
+# Python Scripting
+pyo3 = { version = "0.23", features = ["auto-initialize"], optional = true }
+
+# Utilities
+log = "0.4"
+env_logger = "0.11"
+thiserror = "2.0"
+image = "0.25"
+rfd = "0.15"
+tobj = "4.0"
+
+# Async runtime (required by wgpu)
+pollster = "0.4"
+
+[dev-dependencies]
+pretty_assertions = "1.4"
+
+[features]
+default = []
+ml = ["ort"]
+scripting = ["pyo3"]
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+opt-level = 3
+lto = true

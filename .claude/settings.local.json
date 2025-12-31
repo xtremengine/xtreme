@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(cmd.exe /c \"cd /d D:\\\\dev\\\\game\\\\xtreme && cargo check 2>&1\")",
+      "Bash(powershell.exe -Command \"cd D:\\\\dev\\\\game\\\\xtreme; cargo check 2>&1\")",
+      "Bash(powershell.exe -Command \"$env:Path = [System.Environment]::GetEnvironmentVariable\\(''Path'',''User''\\) + '';'' + [System.Environment]::GetEnvironmentVariable\\(''Path'',''Machine''\\); cd D:\\\\dev\\\\game\\\\xtreme; cargo check 2>&1\")",
+      "Bash(powershell.exe -Command \"New-Item -ItemType Directory -Force -Path ''D:\\\\dev\\\\game\\\\xtreme\\\\src\\\\shaders''\")",
+      "Bash(powershell.exe -Command \"New-Item -ItemType Directory -Force -Path ''D:\\\\dev\\\\game\\\\xtreme\\\\src\\\\editor\\\\panels''\")",
+      "Bash(cargo check:*)",
+      "Bash(findstr:*)",
+      "Bash(wc:*)",
+      "Bash(powershell.exe -Command \"New-Item -ItemType Directory -Force -Path ''D:\\\\dev\\\\game\\\\xtreme\\\\src\\\\editor\\\\app''\")",
+      "Bash(powershell.exe -Command \"Remove-Item -Path ''D:\\\\dev\\\\game\\\\xtreme\\\\src\\\\editor\\\\app.rs'' -Force\")",
+      "Bash(powershell.exe -Command:*)"
+    ]
+  }
+}

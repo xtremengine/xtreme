@@ -1,0 +1,70 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor backups
+*.bak
+*.tmp
+*.temp
+
+# Python (for scripting feature)
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+venv/
+.venv/
+
+# ML models
+*.onnx
+models/
+
+# Assets (large files - use Git LFS instead)
+# *.png
+# *.jpg
+# *.wav
+# *.mp3
+# *.ogg
+
+# Profiling
+*.profraw
+perf.data
+flamegraph.svg
+
+# Coverage
+*.gcno
+*.gcda
+tarpaulin-report.html
+coverage/
+
+# Documentation build
+/doc/
