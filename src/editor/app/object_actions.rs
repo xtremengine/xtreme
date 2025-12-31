@@ -1,9 +1,10 @@
-//! Object CRUD actions: create, delete, duplicate, focus.
+//! Object CRUD actions: create, delete, duplicate, focus, reparent.
 
 use glam::Vec3;
 
 use crate::editor::selection::SceneObject;
 use crate::editor::commands::Command;
+use crate::editor::hierarchy::helpers::{get_descendants, can_reparent};
 use super::EditorApp;
 
 impl EditorApp {
@@ -28,8 +29,32 @@ impl EditorApp {
         log::info!("Created object {}", id);
     }
 
-    /// Delete an object by ID
+    /// Delete an object by ID (cascades to children)
     pub fn delete_object(&mut self, id: u32) {
+        // Get all descendants to delete
+        let descendants = get_descendants(&self.scene_objects, id);
+
+        // Delete all descendants first (children, grandchildren, etc.)
+        for desc_id in descendants.iter().rev() {
+            self.delete_single_object(*desc_id);
+        }
+
+        // Remove from parent's children list if has parent
+        if let Some(parent_id) = self.scene_objects.iter()
+            .find(|o| o.id == id)
+            .and_then(|o| o.hierarchy.parent)
+        {
+            if let Some(parent) = self.scene_objects.iter_mut().find(|o| o.id == parent_id) {
+                parent.hierarchy.remove_child(id);
+            }
+        }
+
+        // Delete the object itself
+        self.delete_single_object(id);
+    }
+
+    /// Delete a single object (no cascade)
+    fn delete_single_object(&mut self, id: u32) {
         // Record command for undo
         if let Some(obj) = self.scene_objects.iter().find(|o| o.id == id) {
             let cmd = Command::Delete {
@@ -50,6 +75,47 @@ impl EditorApp {
         log::info!("Deleted object {}", id);
     }
 
+    /// Reparent an object to a new parent
+    pub fn reparent_object(&mut self, child_id: u32, new_parent_id: Option<u32>) {
+        // Validate reparenting (prevent cycles)
+        if !can_reparent(&self.scene_objects, child_id, new_parent_id) {
+            log::warn!("Cannot reparent: would create cycle or invalid hierarchy");
+            return;
+        }
+
+        // Get old parent id
+        let old_parent_id = self.scene_objects.iter()
+            .find(|o| o.id == child_id)
+            .and_then(|o| o.hierarchy.parent);
+
+        // Remove from old parent's children list
+        if let Some(old_parent_id) = old_parent_id {
+            if let Some(old_parent) = self.scene_objects.iter_mut().find(|o| o.id == old_parent_id) {
+                old_parent.hierarchy.remove_child(child_id);
+            }
+        }
+
+        // Add to new parent's children list
+        if let Some(new_parent_id) = new_parent_id {
+            if let Some(new_parent) = self.scene_objects.iter_mut().find(|o| o.id == new_parent_id) {
+                new_parent.hierarchy.add_child(child_id);
+            }
+        }
+
+        // Update child's parent reference
+        if let Some(child) = self.scene_objects.iter_mut().find(|o| o.id == child_id) {
+            child.hierarchy.parent = new_parent_id;
+        }
+
+        self.scene_manager.mark_dirty();
+
+        if let Some(parent_id) = new_parent_id {
+            log::info!("Reparented object {} to parent {}", child_id, parent_id);
+        } else {
+            log::info!("Unparented object {} to root", child_id);
+        }
+    }
+
     /// Duplicate an object
     pub fn duplicate_object(&mut self, id: u32) {
         if let Some(obj) = self.scene_objects.iter().find(|o| o.id == id) {
@@ -62,10 +128,11 @@ impl EditorApp {
         }
     }
 
-    /// Focus camera on an object
+    /// Focus camera on an object (uses world position)
     pub fn focus_on_object(&mut self, id: u32) {
         if let Some(obj) = self.scene_objects.iter().find(|o| o.id == id) {
-            self.camera.target = obj.position;
+            // Use world position to account for parent hierarchy
+            self.camera.target = obj.world_position(&self.scene_objects);
             log::info!("Focused on object {}", id);
         }
     }

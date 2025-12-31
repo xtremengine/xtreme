@@ -45,16 +45,12 @@ impl EditorApp {
                 self.selection.remove(*object_id);
             }
             Command::Delete { object_id, name, position, rotation, scale, color, visible } => {
-                let obj = SceneObject {
-                    id: *object_id,
-                    name: name.clone(),
-                    position: *position,
-                    rotation: *rotation,
-                    scale: *scale,
-                    color: *color,
-                    visible: *visible,
-                    scripts: Vec::new(),
-                };
+                let mut obj = SceneObject::new(*object_id, name.clone());
+                obj.position = *position;
+                obj.rotation = *rotation;
+                obj.scale = *scale;
+                obj.color = *color;
+                obj.visible = *visible;
                 self.scene_objects.push(obj);
             }
             Command::Rename { object_id, old_name, .. } => {
@@ -100,16 +96,12 @@ impl EditorApp {
                 }
             }
             Command::Create { object_id, name, position, rotation, scale, color, visible } => {
-                let obj = SceneObject {
-                    id: *object_id,
-                    name: name.clone(),
-                    position: *position,
-                    rotation: *rotation,
-                    scale: *scale,
-                    color: *color,
-                    visible: *visible,
-                    scripts: Vec::new(),
-                };
+                let mut obj = SceneObject::new(*object_id, name.clone());
+                obj.position = *position;
+                obj.rotation = *rotation;
+                obj.scale = *scale;
+                obj.color = *color;
+                obj.visible = *visible;
                 self.scene_objects.push(obj);
                 self.selection.select(*object_id);
             }

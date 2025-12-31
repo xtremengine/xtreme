@@ -129,6 +129,8 @@ pub struct EditorApp {
     pub(crate) current_project: Option<crate::editor::project::Project>,
     /// Show project properties dialog
     pub(crate) show_project_dialog: bool,
+    /// Selected tab in project dialog (0=General, 1=Build, 2=Window)
+    pub(crate) project_dialog_tab: usize,
     /// Game window for play mode
     pub(crate) game_window: Option<GameWindow>,
     /// Pending game window creation (needs event loop)
@@ -202,6 +204,7 @@ impl EditorApp {
             splash_texture: None,
             current_project: None,
             show_project_dialog: false,
+            project_dialog_tab: 0,
             game_window: None,
             pending_game_start: false,
         }

@@ -138,16 +138,13 @@ impl Prefab {
                 let id = *next_id;
                 *next_id += 1;
 
-                SceneObject {
-                    id,
-                    name: pobj.name.clone(),
-                    position: position + pobj.position_vec(),
-                    rotation: pobj.rotation_vec(),
-                    scale: pobj.scale_vec(),
-                    color: pobj.color,
-                    visible: pobj.visible,
-                    scripts: Vec::new(),
-                }
+                let mut obj = SceneObject::new(id, pobj.name.clone());
+                obj.position = position + pobj.position_vec();
+                obj.rotation = pobj.rotation_vec();
+                obj.scale = pobj.scale_vec();
+                obj.color = pobj.color;
+                obj.visible = pobj.visible;
+                obj
             })
             .collect()
     }
@@ -186,26 +183,15 @@ mod tests {
 
     #[test]
     fn test_prefab_from_selection() {
-        let objects = vec![
-            SceneObject {
-                id: 1,
-                name: "Cube1".to_string(),
-                position: Vec3::new(0.0, 0.0, 0.0),
-                rotation: Vec3::ZERO,
-                scale: Vec3::ONE,
-                color: [1.0, 0.0, 0.0, 1.0],
-                visible: true,
-            },
-            SceneObject {
-                id: 2,
-                name: "Cube2".to_string(),
-                position: Vec3::new(2.0, 0.0, 0.0),
-                rotation: Vec3::ZERO,
-                scale: Vec3::ONE,
-                color: [0.0, 1.0, 0.0, 1.0],
-                visible: true,
-            },
-        ];
+        let mut obj1 = SceneObject::new(1, "Cube1");
+        obj1.position = Vec3::new(0.0, 0.0, 0.0);
+        obj1.color = [1.0, 0.0, 0.0, 1.0];
+
+        let mut obj2 = SceneObject::new(2, "Cube2");
+        obj2.position = Vec3::new(2.0, 0.0, 0.0);
+        obj2.color = [0.0, 1.0, 0.0, 1.0];
+
+        let objects = vec![obj1, obj2];
 
         let prefab = Prefab::from_selection("Test", &objects).unwrap();
         assert_eq!(prefab.objects.len(), 2);

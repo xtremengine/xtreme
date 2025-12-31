@@ -20,8 +20,32 @@ pub struct ProjectConfig {
     pub window_width: u32,
     /// Window height
     pub window_height: u32,
+    /// Target FPS (-1 for unlimited)
+    #[serde(default = "default_target_fps")]
+    pub target_fps: i32,
+    /// Show FPS counter
+    #[serde(default)]
+    pub show_fps: bool,
+    /// Enable VSync
+    #[serde(default = "default_vsync")]
+    pub vsync: bool,
     /// Splash screen duration in seconds
     pub splash_duration: f32,
+    /// Background color (RGB 0-255)
+    #[serde(default = "default_bg_color")]
+    pub background_color: [u8; 3],
+}
+
+fn default_bg_color() -> [u8; 3] {
+    [25, 25, 38] // Dark blue-gray
+}
+
+fn default_target_fps() -> i32 {
+    60
+}
+
+fn default_vsync() -> bool {
+    true
 }
 
 impl Default for ProjectConfig {
@@ -34,7 +58,11 @@ impl Default for ProjectConfig {
             main_scene: "scenes/main.xtrm".to_string(),
             window_width: 1280,
             window_height: 720,
+            target_fps: 60,
+            show_fps: false,
+            vsync: true,
             splash_duration: 2.0,
+            background_color: default_bg_color(),
         }
     }
 }

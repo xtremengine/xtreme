@@ -1,6 +1,7 @@
 //! Scene save/load actions.
 
 use std::path::PathBuf;
+use std::collections::HashMap;
 
 use crate::editor::selection::SceneObject;
 use crate::editor::scene::{SceneData, SceneObjectData};
@@ -18,7 +19,36 @@ impl EditorApp {
         scene_data.camera_target = Some(self.camera.target.to_array());
         scene_data.camera_distance = Some(self.camera.distance);
 
+        // Create a map from object id to index in the save order
+        let id_to_index: HashMap<u32, usize> = self.scene_objects.iter()
+            .enumerate()
+            .map(|(idx, obj)| (obj.id, idx))
+            .collect();
+
+        // Collect script paths for each object
+        #[cfg(feature = "scripting")]
+        let script_paths: HashMap<u32, Vec<String>> = self.scene_objects.iter()
+            .map(|obj| {
+                let paths: Vec<String> = obj.scripts.iter()
+                    .filter_map(|&script_id| {
+                        self.script_runtime.get_script(script_id)
+                            .map(|s| s.path.to_string_lossy().to_string())
+                    })
+                    .collect();
+                (obj.id, paths)
+            })
+            .collect();
+
         for obj in &self.scene_objects {
+            #[cfg(feature = "scripting")]
+            let scripts = script_paths.get(&obj.id).cloned().unwrap_or_default();
+            #[cfg(not(feature = "scripting"))]
+            let scripts = Vec::new();
+
+            // Convert parent id to parent index
+            let parent_index = obj.hierarchy.parent
+                .and_then(|parent_id| id_to_index.get(&parent_id).copied());
+
             scene_data.add_object(SceneObjectData {
                 id: obj.id,
                 name: obj.name.clone(),
@@ -27,6 +57,8 @@ impl EditorApp {
                 scale: obj.scale.to_array(),
                 color: obj.color,
                 visible: obj.visible,
+                parent_index,
+                scripts,
             });
         }
 
@@ -59,20 +91,67 @@ impl EditorApp {
                     self.camera.distance = distance;
                 }
 
-                // Load objects
-                for obj_data in scene_data.objects {
-                    let obj = SceneObject {
-                        id: self.next_id,
-                        name: obj_data.name.clone(),
-                        position: obj_data.position_vec(),
-                        rotation: obj_data.rotation_vec(),
-                        scale: obj_data.scale_vec(),
-                        color: obj_data.color,
-                        visible: obj_data.visible,
-                        scripts: Vec::new(),
-                    };
+                // First pass: Create all objects and store parent indices
+                let mut parent_indices: Vec<Option<usize>> = Vec::new();
+
+                for obj_data in &scene_data.objects {
+                    let obj_id = self.next_id;
+                    let mut obj = SceneObject::new(obj_id, obj_data.name.clone());
+                    obj.position = obj_data.position_vec();
+                    obj.rotation = obj_data.rotation_vec();
+                    obj.scale = obj_data.scale_vec();
+                    obj.color = obj_data.color;
+                    obj.visible = obj_data.visible;
+
+                    parent_indices.push(obj_data.parent_index);
                     self.scene_objects.push(obj);
                     self.next_id += 1;
+                }
+
+                // Second pass: Reconstruct hierarchy from parent indices
+                // Build a map from load index to object id
+                let index_to_id: Vec<u32> = self.scene_objects.iter().map(|o| o.id).collect();
+
+                for (idx, parent_idx) in parent_indices.iter().enumerate() {
+                    if let Some(parent_idx) = parent_idx {
+                        if let Some(&parent_id) = index_to_id.get(*parent_idx) {
+                            let child_id = index_to_id[idx];
+
+                            // Set parent on child
+                            if let Some(child) = self.scene_objects.iter_mut().find(|o| o.id == child_id) {
+                                child.hierarchy.parent = Some(parent_id);
+                            }
+
+                            // Add child to parent's children list
+                            if let Some(parent) = self.scene_objects.iter_mut().find(|o| o.id == parent_id) {
+                                parent.hierarchy.add_child(child_id);
+                            }
+                        }
+                    }
+                }
+
+                // Third pass: Re-attach scripts
+                #[cfg(feature = "scripting")]
+                for (idx, obj_data) in scene_data.objects.iter().enumerate() {
+                    let obj_id = index_to_id[idx];
+                    for script_path in &obj_data.scripts {
+                        let script_path_buf = PathBuf::from(script_path);
+                        if script_path_buf.exists() {
+                            match self.script_runtime.attach_script(script_path_buf.clone(), obj_id) {
+                                Ok(script_id) => {
+                                    if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == obj_id) {
+                                        obj.scripts.push(script_id);
+                                    }
+                                    log::info!("Re-attached script {:?} to object {}", script_path, obj_id);
+                                }
+                                Err(e) => {
+                                    log::error!("Failed to re-attach script {:?}: {}", script_path, e);
+                                }
+                            }
+                        } else {
+                            log::warn!("Script not found: {:?}", script_path);
+                        }
+                    }
                 }
 
                 self.scene_manager.set_path(path.clone());

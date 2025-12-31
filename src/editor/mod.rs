@@ -38,6 +38,7 @@ mod prefab;
 mod game_window;
 pub mod mesh;
 pub mod project;
+pub mod hierarchy;
 
 pub use app::EditorApp;
 pub use project::{Project, ProjectConfig};

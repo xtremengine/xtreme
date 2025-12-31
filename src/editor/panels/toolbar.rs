@@ -141,20 +141,23 @@ impl ToolbarPanel {
                         ui.add(egui::DragValue::new(&mut self.snap_translate)
                             .speed(0.1)
                             .range(0.1..=10.0)
-                            .prefix("T: "));
+                            .prefix("T: ")
+                            .fixed_decimals(1));
                     }
                     Tool::Rotate => {
                         ui.add(egui::DragValue::new(&mut self.snap_rotate)
                             .speed(1.0)
                             .range(1.0..=90.0)
                             .suffix("°")
-                            .prefix("R: "));
+                            .prefix("R: ")
+                            .fixed_decimals(0));
                     }
                     Tool::Scale => {
                         ui.add(egui::DragValue::new(&mut self.snap_scale)
                             .speed(0.01)
                             .range(0.01..=1.0)
-                            .prefix("S: "));
+                            .prefix("S: ")
+                            .fixed_decimals(2));
                     }
                     _ => {}
                 }

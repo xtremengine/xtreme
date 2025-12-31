@@ -15,16 +15,22 @@ pub struct SceneObjectData {
     pub id: u32,
     /// Object name
     pub name: String,
-    /// Position in world space
+    /// Position in local space (relative to parent)
     pub position: [f32; 3],
-    /// Rotation (euler angles in radians)
+    /// Rotation (euler angles in radians, local space)
     pub rotation: [f32; 3],
-    /// Scale
+    /// Scale (local space)
     pub scale: [f32; 3],
     /// Color (RGBA)
     pub color: [f32; 4],
     /// Visibility
     pub visible: bool,
+    /// Parent object index in the scene (None = root object)
+    #[serde(default)]
+    pub parent_index: Option<usize>,
+    /// Script paths attached to this object
+    #[serde(default)]
+    pub scripts: Vec<String>,
 }
 
 impl SceneObjectData {
@@ -60,7 +66,7 @@ pub struct SceneData {
 impl Default for SceneData {
     fn default() -> Self {
         Self {
-            version: 1,
+            version: 2,
             name: "Untitled".to_string(),
             camera_target: None,
             camera_distance: None,
@@ -73,7 +79,7 @@ impl SceneData {
     /// Create new empty scene
     pub fn new(name: impl Into<String>) -> Self {
         Self {
-            version: 1,
+            version: 2,
             name: name.into(),
             camera_target: None,
             camera_distance: None,
@@ -266,6 +272,8 @@ mod tests {
             scale: [1.0, 1.0, 1.0],
             color: [1.0, 0.0, 0.0, 1.0],
             visible: true,
+            parent_index: None,
+            scripts: Vec::new(),
         });
 
         let mut temp = NamedTempFile::new().unwrap();

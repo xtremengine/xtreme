@@ -108,6 +108,9 @@ impl EditorApp {
                         }
                     }
                     HierarchyAction::Rename(_) => {}
+                    HierarchyAction::Reparent(child_id, new_parent_id) => {
+                        self.reparent_object(child_id, new_parent_id);
+                    }
                     HierarchyAction::None => {}
                 }
             });
@@ -125,13 +128,13 @@ impl EditorApp {
                 ui.heading("Camera");
                 ui.horizontal(|ui| {
                     ui.label("Distance:");
-                    ui.add(egui::DragValue::new(&mut self.camera.distance).speed(0.1).range(1.0..=100.0));
+                    ui.add(egui::DragValue::new(&mut self.camera.distance).speed(0.1).range(1.0..=100.0).fixed_decimals(1));
                 });
 
                 let mut pitch_deg = self.camera.pitch.to_degrees();
                 ui.horizontal(|ui| {
                     ui.label("Pitch:");
-                    if ui.add(egui::DragValue::new(&mut pitch_deg).speed(1.0).range(-89.0..=89.0).suffix("°")).changed() {
+                    if ui.add(egui::DragValue::new(&mut pitch_deg).speed(1.0).range(-89.0..=89.0).suffix("°").fixed_decimals(1)).changed() {
                         self.camera.pitch = pitch_deg.to_radians();
                     }
                 });
@@ -139,14 +142,14 @@ impl EditorApp {
                 let mut yaw_deg = self.camera.yaw.to_degrees();
                 ui.horizontal(|ui| {
                     ui.label("Yaw:");
-                    if ui.add(egui::DragValue::new(&mut yaw_deg).speed(1.0).suffix("°")).changed() {
+                    if ui.add(egui::DragValue::new(&mut yaw_deg).speed(1.0).suffix("°").fixed_decimals(1)).changed() {
                         self.camera.yaw = yaw_deg.to_radians();
                     }
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Zoom:");
-                    ui.add(egui::DragValue::new(&mut self.camera.zoom).speed(0.1).range(1.0..=50.0));
+                    ui.add(egui::DragValue::new(&mut self.camera.zoom).speed(0.1).range(1.0..=50.0).fixed_decimals(1));
                 });
 
                 ui.separator();
@@ -161,7 +164,8 @@ impl EditorApp {
                         ui.add(egui::DragValue::new(&mut self.snap_settings.grid_size)
                             .speed(0.1)
                             .range(0.1..=10.0)
-                            .suffix(" u"));
+                            .suffix(" u")
+                            .fixed_decimals(1));
                     });
 
                     ui.horizontal(|ui| {
@@ -169,14 +173,16 @@ impl EditorApp {
                         ui.add(egui::DragValue::new(&mut self.snap_settings.rotation_snap)
                             .speed(1.0)
                             .range(1.0..=90.0)
-                            .suffix("°"));
+                            .suffix("°")
+                            .fixed_decimals(0));
                     });
 
                     ui.horizontal(|ui| {
                         ui.label("Scale:");
                         ui.add(egui::DragValue::new(&mut self.snap_settings.scale_snap)
                             .speed(0.05)
-                            .range(0.01..=1.0));
+                            .range(0.01..=1.0)
+                            .fixed_decimals(2));
                     });
 
                     ui.horizontal(|ui| {
@@ -365,7 +371,19 @@ impl EditorApp {
                                 if let Some(id) = self.selection.first() {
                                     if let Some(obj) = self.scene_objects.iter().find(|o| o.id == id) {
                                         let gizmo_scale = self.camera.distance * 0.08;
-                                        let axis = self.gizmo.hit_test(&ray, obj.position, gizmo_scale);
+                                        // Calculate world position separately to avoid borrow issues
+                                        let world_pos = if let Some(parent_id) = obj.hierarchy.parent {
+                                            if let Some(parent) = self.scene_objects.iter().find(|p| p.id == parent_id) {
+                                                let parent_matrix = parent.local_matrix();
+                                                let local_pos = obj.position;
+                                                (parent_matrix * glam::Vec4::new(local_pos.x, local_pos.y, local_pos.z, 1.0)).truncate()
+                                            } else {
+                                                obj.position
+                                            }
+                                        } else {
+                                            obj.position
+                                        };
+                                        let axis = self.gizmo.hit_test(&ray, world_pos, gizmo_scale);
                                         self.gizmo.set_hovered(axis);
                                     }
                                 }

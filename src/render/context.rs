@@ -129,6 +129,92 @@ impl RenderContext {
         })
     }
 
+    /// Create a new render context with vsync option
+    pub async fn new_with_vsync(window: Arc<Window>, vsync: bool) -> Result<Self, RenderError> {
+        let size = window.inner_size();
+        let width = size.width.max(1);
+        let height = size.height.max(1);
+
+        let instance = Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            flags: wgpu::InstanceFlags::default(),
+            backend_options: wgpu::BackendOptions::default(),
+            memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
+        });
+
+        let surface = instance
+            .create_surface(window)
+            .map_err(|e| RenderError::SurfaceCreation(e.to_string()))?;
+
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
+            })
+            .await
+            .map_err(|_| RenderError::NoAdapter)?;
+
+        log::info!("GPU Adapter: {:?}", adapter.get_info().name);
+
+        let (device, queue) = adapter
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("Xtreme Device"),
+                required_features: wgpu::Features::empty(),
+                experimental_features: wgpu::ExperimentalFeatures::disabled(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: wgpu::MemoryHints::Performance,
+                trace: wgpu::Trace::Off,
+            })
+            .await
+            .map_err(|e| RenderError::DeviceRequest(e.to_string()))?;
+
+        let caps = surface.get_capabilities(&adapter);
+        let format = caps
+            .formats
+            .iter()
+            .find(|f| f.is_srgb())
+            .copied()
+            .unwrap_or(caps.formats[0]);
+
+        // Choose present mode based on vsync setting
+        let present_mode = if vsync {
+            PresentMode::AutoVsync
+        } else {
+            // Try to use Immediate if available, otherwise Mailbox, otherwise Fifo
+            if caps.present_modes.contains(&PresentMode::Immediate) {
+                PresentMode::Immediate
+            } else if caps.present_modes.contains(&PresentMode::Mailbox) {
+                PresentMode::Mailbox
+            } else {
+                PresentMode::Fifo // Fallback to vsync
+            }
+        };
+
+        log::info!("Surface format: {:?}, VSync: {}, PresentMode: {:?}", format, vsync, present_mode);
+
+        let config = SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format,
+            width,
+            height,
+            present_mode,
+            alpha_mode: caps.alpha_modes[0],
+            view_formats: vec![],
+            desired_maximum_frame_latency: 2,
+        };
+        surface.configure(&device, &config);
+
+        Ok(Self {
+            device,
+            queue,
+            surface,
+            config,
+            adapter,
+            size: (width, height),
+        })
+    }
+
     /// Resize the surface
     pub fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {

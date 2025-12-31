@@ -1,104 +1,11 @@
-//! Dialog windows for the editor.
+//! Script creation and attachment dialogs.
 
 use std::path::PathBuf;
-use super::state::FileDialogAction;
-use super::EditorApp;
+use crate::editor::app::EditorApp;
 
 impl EditorApp {
-    /// Draw file open/save dialog
-    pub(super) fn draw_file_dialog(&mut self, _ctx: &egui::Context) {
-        if let Some(action) = self.file_dialog_action.take() {
-            match action {
-                FileDialogAction::Open => {
-                    if let Some(path) = rfd::FileDialog::new()
-                        .add_filter("Xtreme Scene", &["xtrm"])
-                        .add_filter("All files", &["*"])
-                        .set_title("Open Scene")
-                        .pick_file()
-                    {
-                        self.load_scene(path);
-                    }
-                }
-                FileDialogAction::Save | FileDialogAction::SaveAs => {
-                    let default_name = self.scene_manager.current_path()
-                        .and_then(|p| p.file_name())
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("scene.xtrm")
-                        .to_string();
-
-                    if let Some(path) = rfd::FileDialog::new()
-                        .add_filter("Xtreme Scene", &["xtrm"])
-                        .set_title("Save Scene")
-                        .set_file_name(&default_name)
-                        .save_file()
-                    {
-                        let path = if path.extension().is_none() {
-                            path.with_extension("xtrm")
-                        } else {
-                            path
-                        };
-                        self.save_scene(path);
-                    }
-                }
-            }
-            self.file_path_input.clear();
-        }
-    }
-
-    /// Draw prefab creation dialog
-    pub(super) fn draw_prefab_dialog(&mut self, ctx: &egui::Context) {
-        if !self.show_prefab_dialog {
-            return;
-        }
-
-        let mut open = true;
-        let mut create = false;
-
-        egui::Window::new("Create Prefab")
-            .open(&mut open)
-            .collapsible(false)
-            .resizable(false)
-            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-            .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("Name:");
-                    ui.text_edit_singleline(&mut self.prefab_name_input);
-                });
-
-                ui.label(format!("Objects: {}", self.selection.count()));
-
-                ui.add_space(10.0);
-
-                ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
-                        self.show_prefab_dialog = false;
-                        self.prefab_name_input.clear();
-                    }
-
-                    if ui.add_enabled(
-                        !self.prefab_name_input.is_empty(),
-                        egui::Button::new("Create")
-                    ).clicked() {
-                        create = true;
-                    }
-                });
-            });
-
-        if create {
-            let name = self.prefab_name_input.clone();
-            self.create_prefab_from_selection(&name);
-            self.show_prefab_dialog = false;
-            self.prefab_name_input.clear();
-        }
-
-        if !open {
-            self.show_prefab_dialog = false;
-            self.prefab_name_input.clear();
-        }
-    }
-
     /// Draw script creation dialog (opens native file save dialog)
-    pub(super) fn draw_script_dialog(&mut self, _ctx: &egui::Context) {
+    pub(crate) fn draw_script_dialog(&mut self, _ctx: &egui::Context) {
         if !self.show_script_dialog {
             return;
         }
@@ -362,7 +269,7 @@ def log_error(message: str) -> None: ...
     }
 
     /// Draw attach script dialog (opens native file open dialog)
-    pub(super) fn draw_attach_script_dialog(&mut self, _ctx: &egui::Context) {
+    pub(crate) fn draw_attach_script_dialog(&mut self, _ctx: &egui::Context) {
         if !self.show_attach_script_dialog {
             return;
         }
@@ -410,114 +317,6 @@ def log_error(message: str) -> None: ...
             {
                 log::info!("Would attach script: {:?}", path);
             }
-        }
-    }
-
-    /// Draw project properties dialog
-    pub(super) fn draw_project_dialog(&mut self, ctx: &egui::Context) {
-        if !self.show_project_dialog {
-            return;
-        }
-
-        let Some(ref mut project) = self.current_project else {
-            self.show_project_dialog = false;
-            return;
-        };
-
-        let mut open = true;
-        let mut save = false;
-
-        egui::Window::new("Project Properties")
-            .open(&mut open)
-            .collapsible(false)
-            .resizable(true)
-            .default_width(400.0)
-            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-            .show(ctx, |ui| {
-                ui.heading("General");
-                ui.add_space(5.0);
-
-                egui::Grid::new("project_props_grid")
-                    .num_columns(2)
-                    .spacing([10.0, 8.0])
-                    .show(ui, |ui| {
-                        ui.label("Name:");
-                        ui.text_edit_singleline(&mut project.config.name);
-                        ui.end_row();
-
-                        ui.label("Version:");
-                        ui.text_edit_singleline(&mut project.config.version);
-                        ui.end_row();
-
-                        ui.label("Author:");
-                        ui.text_edit_singleline(&mut project.config.author);
-                        ui.end_row();
-
-                        ui.label("Description:");
-                        ui.text_edit_multiline(&mut project.config.description);
-                        ui.end_row();
-                    });
-
-                ui.add_space(15.0);
-                ui.heading("Build Settings");
-                ui.add_space(5.0);
-
-                egui::Grid::new("project_build_grid")
-                    .num_columns(2)
-                    .spacing([10.0, 8.0])
-                    .show(ui, |ui| {
-                        ui.label("Main Scene:");
-                        ui.text_edit_singleline(&mut project.config.main_scene);
-                        ui.end_row();
-
-                        ui.label("Window Width:");
-                        ui.add(egui::DragValue::new(&mut project.config.window_width).range(320..=3840));
-                        ui.end_row();
-
-                        ui.label("Window Height:");
-                        ui.add(egui::DragValue::new(&mut project.config.window_height).range(240..=2160));
-                        ui.end_row();
-
-                        ui.label("Splash Duration:");
-                        ui.add(egui::DragValue::new(&mut project.config.splash_duration)
-                            .range(0.0..=10.0)
-                            .speed(0.1)
-                            .suffix(" s"));
-                        ui.end_row();
-                    });
-
-                ui.add_space(15.0);
-                ui.heading("Project Path");
-                ui.label(project.root.display().to_string());
-
-                ui.add_space(15.0);
-                ui.separator();
-
-                ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
-                        self.show_project_dialog = false;
-                    }
-
-                    if ui.button("Save").clicked() {
-                        save = true;
-                    }
-                });
-            });
-
-        if save {
-            if let Some(ref project) = self.current_project {
-                match project.save() {
-                    Ok(_) => {
-                        log::info!("Project properties saved");
-                        self.show_project_dialog = false;
-                    }
-                    Err(e) => log::error!("Failed to save project: {}", e),
-                }
-            }
-        }
-
-        if !open {
-            self.show_project_dialog = false;
         }
     }
 }

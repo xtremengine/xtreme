@@ -27,6 +27,7 @@ impl EditorApp {
     }
 
     /// Calculate the center of all selected objects (for gizmo positioning)
+    /// Uses world positions to account for hierarchy
     fn selection_center(&self) -> Option<Vec3> {
         let selected = self.selection.all();
         if selected.is_empty() {
@@ -38,7 +39,8 @@ impl EditorApp {
 
         for id in selected {
             if let Some(obj) = self.scene_objects.iter().find(|o| o.id == *id) {
-                sum += obj.position;
+                // Use world position to account for parent hierarchy
+                sum += obj.world_position(&self.scene_objects);
                 count += 1;
             }
         }

@@ -2,7 +2,9 @@
 //!
 //! Handles object selection in the editor viewport.
 
-use glam::{Vec3, Mat4};
+use glam::{Vec3, Mat4, Quat, EulerRot};
+
+use crate::editor::hierarchy::{Hierarchy, helpers::HasHierarchy};
 
 /// Unique identifier for scene objects
 pub type ObjectId = u32;
@@ -14,11 +16,11 @@ pub struct SceneObject {
     pub id: ObjectId,
     /// Display name
     pub name: String,
-    /// Position in world space
+    /// Position (local space - relative to parent)
     pub position: Vec3,
-    /// Rotation (euler angles in radians)
+    /// Rotation (euler angles in radians, local space)
     pub rotation: Vec3,
-    /// Scale
+    /// Scale (local space)
     pub scale: Vec3,
     /// Object color
     pub color: [f32; 4],
@@ -26,6 +28,8 @@ pub struct SceneObject {
     pub visible: bool,
     /// Attached script IDs
     pub scripts: Vec<u32>,
+    /// Hierarchy component (parent/children relationships)
+    pub hierarchy: Hierarchy,
 }
 
 impl SceneObject {
@@ -40,6 +44,7 @@ impl SceneObject {
             color: [0.8, 0.4, 0.2, 1.0], // Orange
             visible: true,
             scripts: Vec::new(),
+            hierarchy: Hierarchy::new(),
         }
     }
 
@@ -54,20 +59,42 @@ impl SceneObject {
             color: [0.8, 0.4, 0.2, 1.0],
             visible: true,
             scripts: Vec::new(),
+            hierarchy: Hierarchy::new(),
         }
     }
 
-    /// Get the model matrix for this object
+    /// Get the local model matrix (relative to parent)
+    pub fn local_matrix(&self) -> Mat4 {
+        Mat4::from_scale_rotation_translation(
+            self.scale,
+            Quat::from_euler(EulerRot::XYZ, self.rotation.x, self.rotation.y, self.rotation.z),
+            self.position,
+        )
+    }
+
+    /// Get the model matrix for this object (legacy - returns local matrix)
     pub fn model_matrix(&self) -> Mat4 {
-        let translation = Mat4::from_translation(self.position);
-        let rotation = Mat4::from_euler(
-            glam::EulerRot::XYZ,
-            self.rotation.x,
-            self.rotation.y,
-            self.rotation.z,
-        );
-        let scale = Mat4::from_scale(self.scale);
-        translation * rotation * scale
+        self.local_matrix()
+    }
+
+    /// Compute world matrix by traversing parent chain
+    pub fn world_matrix(&self, objects: &[SceneObject]) -> Mat4 {
+        let local = self.local_matrix();
+
+        if let Some(parent_id) = self.hierarchy.parent {
+            if let Some(parent) = objects.iter().find(|o| o.id == parent_id) {
+                let parent_world = parent.world_matrix(objects);
+                return parent_world * local;
+            }
+        }
+
+        local
+    }
+
+    /// Get world position (computed from hierarchy)
+    pub fn world_position(&self, objects: &[SceneObject]) -> Vec3 {
+        let world = self.world_matrix(objects);
+        Vec3::new(world.w_axis.x, world.w_axis.y, world.w_axis.z)
     }
 
     /// Get axis-aligned bounding box (min, max) in world space
@@ -76,6 +103,40 @@ impl SceneObject {
         let min = self.position - half;
         let max = self.position + half;
         (min, max)
+    }
+
+    /// Get AABB in world space (considering hierarchy)
+    pub fn world_aabb(&self, objects: &[SceneObject]) -> (Vec3, Vec3) {
+        let world_pos = self.world_position(objects);
+        let half = self.scale * 0.5;
+        (world_pos - half, world_pos + half)
+    }
+}
+
+/// Implement HasHierarchy trait for SceneObject
+impl HasHierarchy for SceneObject {
+    fn id(&self) -> ObjectId {
+        self.id
+    }
+
+    fn hierarchy(&self) -> &Hierarchy {
+        &self.hierarchy
+    }
+
+    fn hierarchy_mut(&mut self) -> &mut Hierarchy {
+        &mut self.hierarchy
+    }
+
+    fn position(&self) -> Vec3 {
+        self.position
+    }
+
+    fn rotation(&self) -> Vec3 {
+        self.rotation
+    }
+
+    fn scale(&self) -> Vec3 {
+        self.scale
     }
 }
 

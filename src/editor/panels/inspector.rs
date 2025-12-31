@@ -77,6 +77,10 @@ impl InspectorPanel {
             return false;
         };
 
+        // Use object ID to ensure unique widget IDs when switching selection
+        let obj_id = obj.id;
+        ui.push_id(obj_id, |ui| {
+
         // Name field
         ui.horizontal(|ui| {
             ui.label("Name:");
@@ -101,21 +105,21 @@ impl InspectorPanel {
         header.show(ui, |ui| {
             self.transform_expanded = true;
 
-            // Position
+            // Position (local space)
             ui.horizontal(|ui| {
-                ui.label("Position:");
+                ui.label("Position (local):");
             });
             ui.horizontal(|ui| {
                 ui.label("X:");
-                if ui.add(egui::DragValue::new(&mut obj.position.x).speed(0.1)).changed() {
+                if ui.add(egui::DragValue::new(&mut obj.position.x).speed(0.1).fixed_decimals(2)).changed() {
                     changed = true;
                 }
                 ui.label("Y:");
-                if ui.add(egui::DragValue::new(&mut obj.position.y).speed(0.1)).changed() {
+                if ui.add(egui::DragValue::new(&mut obj.position.y).speed(0.1).fixed_decimals(2)).changed() {
                     changed = true;
                 }
                 ui.label("Z:");
-                if ui.add(egui::DragValue::new(&mut obj.position.z).speed(0.1)).changed() {
+                if ui.add(egui::DragValue::new(&mut obj.position.z).speed(0.1).fixed_decimals(2)).changed() {
                     changed = true;
                 }
             });
@@ -131,17 +135,17 @@ impl InspectorPanel {
             );
             ui.horizontal(|ui| {
                 ui.label("X:");
-                if ui.add(egui::DragValue::new(&mut rot_deg.x).speed(1.0).suffix("°")).changed() {
+                if ui.add(egui::DragValue::new(&mut rot_deg.x).speed(1.0).suffix("°").fixed_decimals(1)).changed() {
                     obj.rotation.x = rot_deg.x.to_radians();
                     changed = true;
                 }
                 ui.label("Y:");
-                if ui.add(egui::DragValue::new(&mut rot_deg.y).speed(1.0).suffix("°")).changed() {
+                if ui.add(egui::DragValue::new(&mut rot_deg.y).speed(1.0).suffix("°").fixed_decimals(1)).changed() {
                     obj.rotation.y = rot_deg.y.to_radians();
                     changed = true;
                 }
                 ui.label("Z:");
-                if ui.add(egui::DragValue::new(&mut rot_deg.z).speed(1.0).suffix("°")).changed() {
+                if ui.add(egui::DragValue::new(&mut rot_deg.z).speed(1.0).suffix("°").fixed_decimals(1)).changed() {
                     obj.rotation.z = rot_deg.z.to_radians();
                     changed = true;
                 }
@@ -153,15 +157,15 @@ impl InspectorPanel {
             });
             ui.horizontal(|ui| {
                 ui.label("X:");
-                if ui.add(egui::DragValue::new(&mut obj.scale.x).speed(0.01).range(0.01..=100.0)).changed() {
+                if ui.add(egui::DragValue::new(&mut obj.scale.x).speed(0.01).range(0.01..=100.0).fixed_decimals(2)).changed() {
                     changed = true;
                 }
                 ui.label("Y:");
-                if ui.add(egui::DragValue::new(&mut obj.scale.y).speed(0.01).range(0.01..=100.0)).changed() {
+                if ui.add(egui::DragValue::new(&mut obj.scale.y).speed(0.01).range(0.01..=100.0).fixed_decimals(2)).changed() {
                     changed = true;
                 }
                 ui.label("Z:");
-                if ui.add(egui::DragValue::new(&mut obj.scale.z).speed(0.01).range(0.01..=100.0)).changed() {
+                if ui.add(egui::DragValue::new(&mut obj.scale.z).speed(0.01).range(0.01..=100.0).fixed_decimals(2)).changed() {
                     changed = true;
                 }
             });
@@ -207,7 +211,7 @@ impl InspectorPanel {
             // Alpha
             ui.horizontal(|ui| {
                 ui.label("Alpha:");
-                if ui.add(egui::Slider::new(&mut obj.color[3], 0.0..=1.0)).changed() {
+                if ui.add(egui::Slider::new(&mut obj.color[3], 0.0..=1.0).fixed_decimals(2)).changed() {
                     changed = true;
                 }
             });
@@ -233,6 +237,8 @@ impl InspectorPanel {
                 }
             });
         });
+
+        }); // end push_id
 
         changed
     }

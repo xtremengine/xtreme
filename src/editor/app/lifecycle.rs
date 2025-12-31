@@ -12,12 +12,12 @@ use crate::editor::selection::SceneObject;
 use crate::editor::panels::Tool;
 use crate::editor::gizmos::GizmoMode;
 use crate::editor::shortcuts::EditorAction;
-use crate::editor::game_window::GameWindow;
+use crate::editor::game_window::{GameWindow, GameSettings};
 use super::state::FileDialogAction;
 use super::EditorApp;
 
 impl EditorApp {
-    /// Get model matrices and colors for rendering
+    /// Get model matrices and colors for rendering (uses world transforms)
     pub fn get_render_data(&self) -> Vec<(Mat4, [f32; 4])> {
         self.scene_objects
             .iter()
@@ -29,7 +29,8 @@ impl EditorApp {
                 } else {
                     o.color
                 };
-                (o.model_matrix(), color)
+                // Use world matrix to account for parent hierarchy
+                (o.world_matrix(&self.scene_objects), color)
             })
             .collect()
     }
@@ -145,7 +146,9 @@ impl App for EditorApp {
             if self.toolbar_panel.current_tool != Tool::Select {
                 if let Some(id) = self.selection.first() {
                     if let Some(obj) = self.scene_objects.iter().find(|o| o.id == id) {
-                        viewport.render_gizmo(ctx, &mut encoder, &self.camera, &self.gizmo, obj.position);
+                        // Use world position for gizmo
+                        let world_pos = obj.world_position(&self.scene_objects);
+                        viewport.render_gizmo(ctx, &mut encoder, &self.camera, &self.gizmo, world_pos);
                     }
                 }
             }
@@ -196,11 +199,26 @@ impl App for EditorApp {
             // Save current scene state
             self.saved_scene_state = self.scene_objects.clone();
 
+            // Build game settings from project config
+            let settings = if let Some(project) = &self.current_project {
+                GameSettings {
+                    window_width: project.config.window_width,
+                    window_height: project.config.window_height,
+                    splash_duration: project.config.splash_duration,
+                    background_color: project.config.background_color,
+                    show_fps: project.config.show_fps,
+                    vsync: project.config.vsync,
+                }
+            } else {
+                GameSettings::default()
+            };
+
             // Create game window
             match pollster::block_on(GameWindow::new(
                 event_loop,
                 self.scene_objects.clone(),
                 self.camera.clone(),
+                settings,
             )) {
                 Ok(game_window) => {
                     game_window.window.request_redraw();
