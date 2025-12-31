@@ -171,8 +171,7 @@ impl Viewport {
         // Get uniform buffer alignment requirement
         let uniform_alignment = ctx.device.limits().min_uniform_buffer_offset_alignment;
         let uniform_size = std::mem::size_of::<Uniforms>() as u32;
-        let aligned_uniform_size =
-            uniform_size.div_ceil(uniform_alignment) * uniform_alignment;
+        let aligned_uniform_size = uniform_size.div_ceil(uniform_alignment) * uniform_alignment;
 
         let mesh_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

@@ -31,8 +31,7 @@ impl Viewport {
 
         // Calculate aligned uniform size
         let uniform_size = std::mem::size_of::<Uniforms>() as u32;
-        let aligned_size = uniform_size.div_ceil(self.uniform_alignment)
-            * self.uniform_alignment;
+        let aligned_size = uniform_size.div_ceil(self.uniform_alignment) * self.uniform_alignment;
 
         // Write ALL uniforms to the buffer at once (before recording any render passes)
         let num_objects = objects.len().min(MAX_OBJECTS);

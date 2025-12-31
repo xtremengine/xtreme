@@ -19,7 +19,6 @@ pub struct MouseState {
     pub just_released: [bool; 5],
 }
 
-
 /// Mouse tracker
 pub struct Mouse {
     pub position: Vec2,

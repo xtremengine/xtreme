@@ -123,8 +123,7 @@ impl GameWindow {
         // Uniform alignment
         let uniform_alignment = ctx.device.limits().min_uniform_buffer_offset_alignment;
         let uniform_size = std::mem::size_of::<Uniforms>() as u32;
-        let aligned_size =
-            uniform_size.div_ceil(uniform_alignment) * uniform_alignment;
+        let aligned_size = uniform_size.div_ceil(uniform_alignment) * uniform_alignment;
 
         // Create uniform buffer
         let mesh_uniform_buffer = ctx.device.create_buffer(&wgpu::BufferDescriptor {
@@ -513,8 +512,7 @@ impl GameWindow {
 
         // Update uniforms only when not in splash
         let uniform_size = std::mem::size_of::<Uniforms>() as u32;
-        let aligned_size = uniform_size.div_ceil(self.uniform_alignment)
-            * self.uniform_alignment;
+        let aligned_size = uniform_size.div_ceil(self.uniform_alignment) * self.uniform_alignment;
 
         let num_objects = if self.in_splash {
             0
