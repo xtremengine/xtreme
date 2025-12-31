@@ -41,9 +41,12 @@ impl EguiIntegration {
         let renderer = egui_wgpu::Renderer::new(
             &ctx.device,
             ctx.format(),
-            None,
-            1,
-            false,
+            egui_wgpu::RendererOptions {
+                depth_stencil_format: None,
+                msaa_samples: 1,
+                dithering: false,
+                predictable_texture_filtering: false,
+            },
         );
 
         Self {
@@ -119,6 +122,7 @@ impl EguiIntegration {
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view,
                     resolve_target: None,
+                    depth_slice: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load, // Don't clear - render on top
                         store: wgpu::StoreOp::Store,

@@ -36,6 +36,7 @@ pub struct RenderPipeline {
     /// WGPU pipeline
     pipeline: wgpu::RenderPipeline,
     /// Bind group layout
+    #[allow(dead_code)]
     bind_group_layout: wgpu::BindGroupLayout,
     /// Uniform buffer
     uniform_buffer: wgpu::Buffer,

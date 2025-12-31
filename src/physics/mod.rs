@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! # Physics Module
 //!
 //! Collision detection and physics simulation.

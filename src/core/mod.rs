@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! # Core ECS Module
 //!
 //! Entity Component System implementation with data-oriented design.

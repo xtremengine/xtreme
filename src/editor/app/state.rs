@@ -6,7 +6,7 @@ use winit::window::Window as WinitWindow;
 
 use crate::render::{RenderContext, IsometricCamera, EguiIntegration};
 use crate::editor::viewport::Viewport;
-use crate::editor::selection::{SceneObject, Selection, ObjectId};
+use crate::editor::selection::{SceneObject, Selection};
 use crate::editor::panels::{HierarchyPanel, ToolbarPanel, InspectorPanel, AssetBrowser};
 use crate::editor::gizmos::Gizmo;
 use crate::editor::commands::CommandHistory;
@@ -21,6 +21,7 @@ use crate::scripting::{ScriptRuntime, ScriptContext};
 #[derive(Clone, Copy, Debug)]
 pub enum FileDialogAction {
     Open,
+    #[allow(dead_code)]
     Save,
     SaveAs,
 }
@@ -30,6 +31,7 @@ pub enum FileDialogAction {
 pub struct InputModifiers {
     pub ctrl: bool,
     pub shift: bool,
+    #[allow(dead_code)]
     pub alt: bool,
 }
 

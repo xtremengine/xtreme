@@ -117,7 +117,7 @@ impl EditorApp {
     }
 
     #[cfg(feature = "scripting")]
-    fn sync_script_context(&mut self) {
+    pub(super) fn sync_script_context(&mut self) {
         self.script_context.clear_objects();
         self.script_context.set_time(self.play_time);
 

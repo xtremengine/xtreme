@@ -2,6 +2,7 @@
 
 use glam::Vec3;
 
+#[allow(unused_imports)]
 use crate::render::IsometricCamera;
 use crate::editor::selection::SceneObject;
 use crate::editor::panels::{HierarchyAction, ToolbarAction, Tool, AssetAction};

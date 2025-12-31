@@ -15,6 +15,7 @@ mod hit_test;
 mod drag;
 mod math;
 
+#[allow(unused_imports)]
 pub use types::{GizmoAxis, GizmoMode, GizmoVertex, GizmoDelta, colors};
 
 use glam::Vec3;

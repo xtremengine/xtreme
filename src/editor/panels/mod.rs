@@ -10,4 +10,5 @@ pub mod asset_browser;
 pub use hierarchy::{HierarchyPanel, HierarchyAction};
 pub use toolbar::{ToolbarPanel, ToolbarAction, Tool};
 pub use inspector::InspectorPanel;
+#[allow(unused_imports)]
 pub use asset_browser::{AssetBrowser, AssetAction, AssetEntry, AssetType};

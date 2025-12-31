@@ -128,22 +128,22 @@ impl HierarchyPanel {
                     response.context_menu(|ui| {
                         if ui.button("Rename").clicked() {
                             action = HierarchyAction::Rename(obj.id);
-                            ui.close_menu();
+                            ui.close();
                         }
                         if ui.button("Duplicate").clicked() {
                             action = HierarchyAction::Duplicate(obj.id);
-                            ui.close_menu();
+                            ui.close();
                         }
                         ui.separator();
                         let vis_text = if obj.visible { "Hide" } else { "Show" };
                         if ui.button(vis_text).clicked() {
                             action = HierarchyAction::ToggleVisibility(obj.id);
-                            ui.close_menu();
+                            ui.close();
                         }
                         ui.separator();
                         if ui.button("Delete").clicked() {
                             action = HierarchyAction::Delete(obj.id);
-                            ui.close_menu();
+                            ui.close();
                         }
                     });
                 }

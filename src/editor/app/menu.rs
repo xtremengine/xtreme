@@ -13,7 +13,7 @@ impl EditorApp {
     /// Draw the main menu bar
     pub(super) fn draw_menu_bar(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
+            egui::MenuBar::new().ui(ui, |ui| {
                 self.draw_file_menu(ui);
                 self.draw_edit_menu(ui);
                 self.draw_create_menu(ui);
@@ -27,13 +27,13 @@ impl EditorApp {
             let new_shortcut = self.shortcuts.get_shortcut_text(EditorAction::NewScene);
             if ui.add(egui::Button::new("New Scene").shortcut_text(&new_shortcut)).clicked() {
                 self.new_scene();
-                ui.close_menu();
+                ui.close();
             }
 
             let open_shortcut = self.shortcuts.get_shortcut_text(EditorAction::OpenScene);
             if ui.add(egui::Button::new("Open...").shortcut_text(&open_shortcut)).clicked() {
                 self.file_dialog_action = Some(FileDialogAction::Open);
-                ui.close_menu();
+                ui.close();
             }
 
             ui.separator();
@@ -44,13 +44,13 @@ impl EditorApp {
                 if let Some(path) = self.scene_manager.current_path() {
                     self.save_scene(path.to_path_buf());
                 }
-                ui.close_menu();
+                ui.close();
             }
 
             let save_as_shortcut = self.shortcuts.get_shortcut_text(EditorAction::SaveSceneAs);
             if ui.add(egui::Button::new("Save As...").shortcut_text(&save_as_shortcut)).clicked() {
                 self.file_dialog_action = Some(FileDialogAction::SaveAs);
-                ui.close_menu();
+                ui.close();
             }
 
             ui.separator();
@@ -86,7 +86,7 @@ impl EditorApp {
                         Err(e) => log::error!("Failed to create project: {}", e),
                     }
                 }
-                ui.close_menu();
+                ui.close();
             }
 
             if ui.button("Open Project...").clicked() {
@@ -107,7 +107,7 @@ impl EditorApp {
                         Err(e) => log::error!("Failed to open project: {}", e),
                     }
                 }
-                ui.close_menu();
+                ui.close();
             }
 
             ui.separator();
@@ -116,7 +116,7 @@ impl EditorApp {
             let mut save_project = false;
             if ui.add_enabled(has_project, egui::Button::new("Save Project")).clicked() {
                 save_project = true;
-                ui.close_menu();
+                ui.close();
             }
 
             if save_project {
@@ -135,7 +135,7 @@ impl EditorApp {
 
             if ui.add_enabled(has_project, egui::Button::new("Properties...")).clicked() {
                 self.show_project_dialog = true;
-                ui.close_menu();
+                ui.close();
             }
         });
     }
@@ -153,7 +153,7 @@ impl EditorApp {
                 egui::Button::new(&undo_label).shortcut_text(&undo_shortcut)
             ).clicked() {
                 self.undo();
-                ui.close_menu();
+                ui.close();
             }
 
             let redo_shortcut = self.shortcuts.get_shortcut_text(EditorAction::Redo);
@@ -167,7 +167,7 @@ impl EditorApp {
                 egui::Button::new(&redo_label).shortcut_text(&redo_shortcut)
             ).clicked() {
                 self.redo();
-                ui.close_menu();
+                ui.close();
             }
 
             ui.separator();
@@ -178,7 +178,7 @@ impl EditorApp {
                 egui::Button::new("Cut").shortcut_text(&cut_shortcut)
             ).clicked() {
                 self.cut_selected();
-                ui.close_menu();
+                ui.close();
             }
 
             let copy_shortcut = self.shortcuts.get_shortcut_text(EditorAction::Copy);
@@ -187,7 +187,7 @@ impl EditorApp {
                 egui::Button::new("Copy").shortcut_text(&copy_shortcut)
             ).clicked() {
                 self.copy_selected();
-                ui.close_menu();
+                ui.close();
             }
 
             let paste_shortcut = self.shortcuts.get_shortcut_text(EditorAction::Paste);
@@ -196,7 +196,7 @@ impl EditorApp {
                 egui::Button::new("Paste").shortcut_text(&paste_shortcut)
             ).clicked() {
                 self.paste();
-                ui.close_menu();
+                ui.close();
             }
 
             ui.separator();
@@ -210,7 +210,7 @@ impl EditorApp {
                 for id in ids {
                     self.delete_object(id);
                 }
-                ui.close_menu();
+                ui.close();
             }
 
             let duplicate_shortcut = self.shortcuts.get_shortcut_text(EditorAction::Duplicate);
@@ -221,7 +221,7 @@ impl EditorApp {
                 if let Some(id) = self.selection.first() {
                     self.duplicate_object(id);
                 }
-                ui.close_menu();
+                ui.close();
             }
         });
     }
@@ -232,7 +232,7 @@ impl EditorApp {
                 let obj = SceneObject::cube(self.next_id, Vec3::new(0.0, 0.5, 0.0));
                 self.next_id += 1;
                 self.create_object(obj);
-                ui.close_menu();
+                ui.close();
             }
             if ui.button("Random Cubes (5)").clicked() {
                 for _ in 0..5 {
@@ -243,7 +243,7 @@ impl EditorApp {
                     self.scene_objects.push(obj);
                 }
                 log::info!("Created 5 random cubes");
-                ui.close_menu();
+                ui.close();
             }
 
             ui.separator();
@@ -274,7 +274,7 @@ impl EditorApp {
                         }
                     }
                 }
-                ui.close_menu();
+                ui.close();
             }
 
             ui.separator();
@@ -292,7 +292,7 @@ impl EditorApp {
             ).clicked() {
                 self.prefab_name_input = format!("Prefab {}", self.prefabs.len() + 1);
                 self.show_prefab_dialog = true;
-                ui.close_menu();
+                ui.close();
             }
 
             ui.separator();
@@ -310,7 +310,7 @@ impl EditorApp {
                     let label = format!("{} ({} objs)", name, count);
                     if ui.button(&label).clicked() {
                         instantiate_idx = Some(i);
-                        ui.close_menu();
+                        ui.close();
                     }
                 }
 
@@ -326,23 +326,23 @@ impl EditorApp {
         ui.menu_button("View", |ui| {
             if ui.button("Reset Camera").clicked() {
                 self.camera = IsometricCamera::default();
-                ui.close_menu();
+                ui.close();
             }
             if ui.button("Top View").clicked() {
                 self.camera.pitch = -89.0_f32.to_radians();
                 self.camera.yaw = 0.0;
-                ui.close_menu();
+                ui.close();
             }
             if ui.button("Front View").clicked() {
                 self.camera.pitch = 0.0;
                 self.camera.yaw = 0.0;
-                ui.close_menu();
+                ui.close();
             }
             if ui.button("Focus Selected").clicked() {
                 if let Some(id) = self.selection.first() {
                     self.focus_on_object(id);
                 }
-                ui.close_menu();
+                ui.close();
             }
         });
     }

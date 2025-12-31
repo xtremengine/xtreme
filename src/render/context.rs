@@ -58,11 +58,11 @@ impl RenderContext {
         let height = size.height.max(1);
 
         // Create WGPU instance with best available backend
-        let instance = Instance::new(wgpu::InstanceDescriptor {
+        let instance = Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
-            dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
             flags: wgpu::InstanceFlags::default(),
-            ..Default::default()
+            backend_options: wgpu::BackendOptions::default(),
+            memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
         });
 
         // Create surface from window
@@ -78,21 +78,20 @@ impl RenderContext {
                 force_fallback_adapter: false,
             })
             .await
-            .ok_or(RenderError::NoAdapter)?;
+            .map_err(|_| RenderError::NoAdapter)?;
 
         log::info!("GPU Adapter: {:?}", adapter.get_info().name);
 
         // Request device and queue
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("Xtreme Device"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
-                    memory_hints: wgpu::MemoryHints::Performance,
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("Xtreme Device"),
+                required_features: wgpu::Features::empty(),
+                experimental_features: wgpu::ExperimentalFeatures::disabled(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: wgpu::MemoryHints::Performance,
+                trace: wgpu::Trace::Off,
+            })
             .await
             .map_err(|e| RenderError::DeviceRequest(e.to_string()))?;
 

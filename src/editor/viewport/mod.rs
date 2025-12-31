@@ -11,6 +11,7 @@ mod types;
 mod textures;
 mod render;
 
+#[allow(unused_imports)]
 pub use types::{GridUniforms, GizmoUniforms};
 
 use wgpu::util::DeviceExt;
