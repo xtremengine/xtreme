@@ -70,8 +70,8 @@ xtreme-engine = "0.1"
 Or clone the repository:
 
 ```bash
-git clone https://github.com/your-username/xtreme-engine.git
-cd xtreme-engine
+git clone https://github.com/xtremengine/xtreme
+cd xtreme
 cargo build
 ```
 
