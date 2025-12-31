@@ -25,7 +25,7 @@ path = "examples/editor.rs"
 
 [dependencies]
 # Rendering
-wgpu = "23"
+wgpu = "28"
 winit = "0.30"
 glam = { version = "0.30", features = ["bytemuck"] }
 bytemuck = { version = "1.19", features = ["derive"] }
