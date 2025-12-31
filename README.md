@@ -13,6 +13,7 @@ A modular ECS game engine with isometric 3D rendering and ML-powered AI, built i
 - **Generational Entities**: Safe entity recycling with automatic stale reference detection
 - **Archetype System**: Fast entity queries by component composition
 - **System Scheduler**: Ordered execution with configurable stages
+- **Parent-Child Hierarchy**: ECS-like transform hierarchy with local/world space transforms
 
 ### Rendering (WGPU)
 - **Cross-Platform**: Vulkan, DirectX 12, Metal, WebGPU backends
@@ -20,6 +21,7 @@ A modular ECS game engine with isometric 3D rendering and ML-powered AI, built i
 - **Material System**: Shader and texture management
 - **Mesh Primitives**: Cubes, spheres, planes, and custom geometry
 - **Egui Integration**: Immediate mode UI for editor and debug
+- **Camera Components**: Per-entity cameras with perspective/orthographic projection
 
 ### Physics
 - **Collision Shapes**: AABB, Sphere, OBB
@@ -32,23 +34,26 @@ A modular ECS game engine with isometric 3D rendering and ML-powered AI, built i
 - **A* Pathfinding**: Grid-based navigation
 - **NavMesh**: Agent-based navigation
 - **Perception**: Field of view, sensors, and memory system
+- **AI Brain**: State machine with configurable behaviors
 
 ### Visual Editor
-- **3D Viewport**: Isometric scene view with gizmos
-- **Hierarchy Panel**: Entity tree with drag-and-drop
-- **Inspector Panel**: Component editing
+- **3D Viewport**: Isometric scene view with transform gizmos
+- **Hierarchy Panel**: Entity tree with parent-child relationships
+- **Inspector Panel**: Component editing with real-time preview
 - **Asset Browser**: File system navigation
 - **Toolbar**: Object creation and manipulation tools
-- **Undo/Redo**: Full command history
+- **Undo/Redo**: Full command history with unlimited levels
 - **Scene I/O**: Save/load in RON or JSON format
 - **Prefab System**: Reusable object templates
-- **Keyboard Shortcuts**: Customizable bindings
-- **Play Mode**: Test scenes in editor
+- **Keyboard Shortcuts**: Customizable bindings (see below)
+- **Play Mode**: Test scenes directly in editor
+- **Camera Visualization**: Wireframe pyramid showing camera direction
 
 ### Scripting (Optional)
-- **Python Integration**: pyo3-based scripting
-- **Lifecycle Callbacks**: `_ready()`, `_update()`, `_physics_update()`
-- **Scene API**: Object manipulation from scripts
+- **Python Integration**: pyo3-based scripting system
+- **Lifecycle Callbacks**: `_ready()`, `_update(delta)`, `_physics_update(delta)`
+- **Scene API**: Object manipulation, transform access, input handling
+- **Hot Reload**: Edit scripts while editor is running
 
 ## Quick Start
 
@@ -57,6 +62,7 @@ A modular ECS game engine with isometric 3D rendering and ML-powered AI, built i
 - Rust 1.75+ (stable)
 - Windows 10/11, Linux, or macOS
 - GPU with Vulkan, DirectX 12, or Metal support
+- Python 3.9+ (optional, for scripting feature)
 
 ### Installation
 
@@ -104,6 +110,67 @@ fn main() {
 cargo run --example editor
 ```
 
+## Editor Guide
+
+### Keyboard Shortcuts
+
+| Category | Shortcut | Action |
+|----------|----------|--------|
+| **File** | `Ctrl+N` | New Scene |
+| | `Ctrl+O` | Open Scene |
+| | `Ctrl+S` | Save Scene |
+| | `Ctrl+Shift+S` | Save Scene As |
+| **Edit** | `Ctrl+Z` | Undo |
+| | `Ctrl+Shift+Z` / `Ctrl+Y` | Redo |
+| | `Ctrl+X` | Cut |
+| | `Ctrl+C` | Copy |
+| | `Ctrl+V` | Paste |
+| | `Delete` | Delete Selected |
+| | `Ctrl+D` | Duplicate |
+| | `Ctrl+A` | Select All |
+| **Tools** | `Q` | Select Tool |
+| | `W` | Move Tool |
+| | `E` | Rotate Tool |
+| | `R` | Scale Tool |
+| **View** | `F` | Focus on Selected |
+| | `Home` | Frame All Objects |
+| | `Ctrl+1` | Front View |
+| | `Ctrl+3` | Side View |
+| | `Ctrl+7` | Top View |
+| **Object** | `H` | Toggle Visibility |
+| **Play** | `F5` | Toggle Play Mode |
+
+### Viewport Navigation
+
+| Action | Control |
+|--------|---------|
+| Orbit Camera | Right-click + Drag |
+| Pan Camera | Middle-click + Drag |
+| Zoom | Scroll Wheel |
+| Focus Object | Double-click in Hierarchy |
+
+### Creating Objects
+
+1. Use the toolbar buttons: **+ Cube**, **+ Empty**, **+ Camera**
+2. Or right-click in hierarchy for context menu
+3. Objects can be parented via drag-and-drop or context menu
+
+### Parent-Child Hierarchy
+
+Objects can be organized in a parent-child hierarchy:
+- **Parenting**: Right-click object > Set Parent... > Select parent
+- **Unparenting**: Right-click object > Unparent (move to root)
+- **Local Transforms**: Child transforms are relative to parent
+- **World Transforms**: Automatically calculated from hierarchy
+
+### Camera Component
+
+Add cameras to any object for in-game views:
+- **Main Camera**: Check "Main Camera" to use in Play Mode
+- **Projection**: Perspective or Orthographic
+- **FOV**: Field of view (perspective mode)
+- **Visualization**: Cameras show as wireframe pyramids in editor
+
 ## Examples
 
 | Example | Description | Command |
@@ -117,20 +184,20 @@ cargo run --example editor
 ```
 xtreme/
 ├── src/
-│   ├── lib.rs              # Crate root
+│   ├── lib.rs              # Crate root and prelude
 │   ├── core/               # ECS implementation
 │   │   ├── entity.rs       # Entity IDs with generations
 │   │   ├── component.rs    # Component storage (SparseSet)
-│   │   ├── archetype.rs    # Entity grouping
+│   │   ├── archetype.rs    # Entity grouping by components
 │   │   ├── world.rs        # Central container
 │   │   ├── query.rs        # Component iteration
-│   │   └── system.rs       # System scheduler
+│   │   └── system.rs       # System scheduler with stages
 │   ├── render/             # WGPU rendering
 │   │   ├── context.rs      # Device, queue, surface
 │   │   ├── window.rs       # Window management
 │   │   ├── camera.rs       # Isometric camera
-│   │   ├── mesh.rs         # Geometry
-│   │   ├── material.rs     # Shaders
+│   │   ├── mesh.rs         # Geometry primitives
+│   │   ├── material.rs     # Shaders and materials
 │   │   ├── texture.rs      # Texture loading
 │   │   ├── pipeline.rs     # Render pipeline
 │   │   └── egui_integration.rs # UI rendering
@@ -140,12 +207,12 @@ xtreme/
 │   │   └── events.rs       # Event queue
 │   ├── physics/            # Collision & movement
 │   │   ├── shapes.rs       # AABB, Sphere, OBB
-│   │   ├── collision.rs    # Detection
+│   │   ├── collision.rs    # Detection algorithms
 │   │   ├── spatial.rs      # Broadphase grid
 │   │   ├── raycast.rs      # Ray queries
 │   │   └── movement.rs     # Velocity, RigidBody
 │   ├── ai/                 # Game AI
-│   │   ├── brain.rs        # Agent component
+│   │   ├── brain.rs        # Agent state machine
 │   │   ├── perception.rs   # Sensors, FOV
 │   │   ├── pathfinding.rs  # A* algorithm
 │   │   ├── navmesh.rs      # Navigation mesh
@@ -155,29 +222,35 @@ xtreme/
 │   │   └── isometric.rs    # Coordinate conversion
 │   ├── editor/             # Visual editor
 │   │   ├── app/            # Editor application
-│   │   │   ├── state.rs    # Editor state
+│   │   │   ├── state.rs    # Editor state management
 │   │   │   ├── ui.rs       # Main UI layout
 │   │   │   ├── menu.rs     # Menu bar
 │   │   │   ├── input.rs    # Input handling
-│   │   │   ├── history.rs  # Undo/redo
-│   │   │   └── ...
-│   │   ├── viewport/       # 3D view
+│   │   │   ├── history.rs  # Undo/redo system
+│   │   │   ├── play_mode.rs # Play mode logic
+│   │   │   └── dialogs/    # File dialogs
+│   │   ├── viewport/       # 3D view rendering
 │   │   ├── panels/         # UI panels
 │   │   │   ├── hierarchy.rs   # Entity tree
 │   │   │   ├── inspector.rs   # Component editor
 │   │   │   ├── toolbar.rs     # Tools
 │   │   │   └── asset_browser.rs # File browser
 │   │   ├── gizmos/         # Transform handles
+│   │   ├── components/     # Editor components
+│   │   │   └── camera.rs   # CameraComponent
 │   │   ├── selection.rs    # Object selection
-│   │   ├── commands.rs     # Undo/redo
-│   │   ├── scene.rs        # Scene I/O
+│   │   ├── commands.rs     # Undo/redo commands
+│   │   ├── scene.rs        # Scene serialization
 │   │   ├── prefab.rs       # Prefab system
+│   │   ├── hierarchy.rs    # Parent-child system
 │   │   └── shortcuts.rs    # Keyboard shortcuts
 │   ├── scripting/          # Python integration (optional)
 │   │   ├── script.rs       # Script component
 │   │   ├── runtime.rs      # Python runtime
 │   │   └── api.rs          # Script API
-│   └── utils/              # Pools, timers
+│   └── utils/              # Utilities
+│       ├── pool.rs         # Object pools
+│       └── timer.rs        # Timers
 ├── examples/
 │   ├── hello_triangle.rs
 │   ├── isometric_camera.rs
@@ -186,7 +259,7 @@ xtreme/
     └── process/            # Development log
 ```
 
-## Module Overview
+## Module Reference
 
 ### Core (`xtreme::core`)
 
@@ -195,7 +268,7 @@ The ECS implementation follows data-oriented design principles:
 ```rust
 use xtreme::core::*;
 
-// Define components
+// Define components (any Clone type)
 #[derive(Debug, Clone)]
 struct Health { value: f32 }
 impl Component for Health {}
@@ -214,17 +287,17 @@ let entity = world
     .with(Velocity { dx: 1.0, dy: 0.0 })
     .build();
 
-// Access components
+// Direct component access
 if let Some(health) = world.get_mut::<Health>(entity) {
     health.value -= 10.0;
 }
 
-// Query components
+// Query single component type
 for (entity, pos) in world.query_one::<Position>() {
     println!("Entity {:?} at {:?}", entity, pos);
 }
 
-// Check entity validity
+// Check entity validity (generational safety)
 assert!(world.is_alive(entity));
 world.despawn(entity);
 assert!(!world.is_alive(entity));
@@ -248,8 +321,10 @@ camera.pitch = 30.0_f32.to_radians();
 // Get view-projection matrix
 let vp = camera.view_projection();
 
-// Create render context
-let context = RenderContext::new(window).await?;
+// Window configuration
+let config = WindowConfig::new("My Game")
+    .with_size(1280, 720)
+    .with_resizable(true);
 ```
 
 ### Physics (`xtreme::physics`)
@@ -260,8 +335,9 @@ Collision detection and movement:
 use xtreme::physics::*;
 use glam::Vec3;
 
-// Create AABB
+// Create collision shapes
 let aabb = AABB::new(Vec3::ZERO, Vec3::new(1.0, 1.0, 1.0));
+let sphere = Sphere::new(Vec3::ZERO, 0.5);
 
 // Raycast
 let ray = Ray::new(Vec3::new(0.0, 5.0, 0.0), Vec3::NEG_Y);
@@ -269,7 +345,7 @@ if let Some(hit) = ray.cast(&aabb) {
     println!("Hit at distance: {}", hit.distance);
 }
 
-// Spatial grid for broadphase
+// Spatial grid for broadphase optimization
 let mut grid = SpatialGrid::new(10.0);  // 10 unit cells
 grid.insert(entity, position);
 let nearby = grid.query_radius(position, 5.0);
@@ -282,20 +358,33 @@ Pathfinding and ML inference:
 ```rust
 use xtreme::ai::*;
 
-// A* pathfinding
-let grid = Grid::new(100, 100);
-let path = AStar::find_path(&grid, (0, 0), (50, 50));
+// A* pathfinding on a grid
+let mut grid = Grid::new(100, 100);
+grid.set_blocked(50, 50);  // Add obstacle
 
-// AI Brain component
-let brain = AIBrain::new()
-    .with_state(AIState::Idle)
-    .with_perception(FieldOfView::new(60.0, 20.0));
+if let Some(path) = AStar::find_path(&grid, (0, 0), (99, 99)) {
+    for (x, y) in path.nodes {
+        println!("Step: ({}, {})", x, y);
+    }
+}
+
+// AI Brain component for agents
+let mut brain = AIBrain::new();
+brain.set_state(AIState::Patrol);
+
+// Update brain (call each frame)
+brain.update(delta_time);
+if brain.should_think() {
+    // Make decision based on current state
+    brain.did_think();
+}
 
 // ML inference (requires 'ml' feature)
 #[cfg(feature = "ml")]
 {
     let model = OnnxModel::load("agent.onnx")?;
-    let output = model.infer(&observation)?;
+    let input = ModelInput::from_vec(observation);
+    let output = model.infer(&input)?;
 }
 ```
 
@@ -308,12 +397,75 @@ use xtreme::math::*;
 use glam::Vec3;
 
 // Transform component
-let transform = Transform::from_position(Vec3::new(1.0, 2.0, 3.0));
+let mut transform = Transform::from_position(Vec3::new(1.0, 2.0, 3.0));
+transform.rotation = Vec3::new(0.0, 45.0_f32.to_radians(), 0.0);
+transform.scale = Vec3::ONE;
 
-// Isometric conversion (2:1 ratio)
+// Get 4x4 transformation matrix
+let matrix = transform.matrix();
+
+// Isometric conversion (2:1 ratio, standard isometric)
 let config = IsometricConfig::standard();
-let screen = world_to_screen(Vec3::new(1.0, 0.0, 1.0), &config);
-let world = screen_to_world(screen, &config);
+let screen_pos = world_to_screen(Vec3::new(1.0, 0.0, 1.0), &config);
+let world_pos = screen_to_world(screen_pos, &config);
+```
+
+### Scripting (`xtreme::scripting`)
+
+Python scripting for game logic (requires `scripting` feature):
+
+```rust
+// Enable in Cargo.toml:
+// [dependencies]
+// xtreme-engine = { version = "0.1", features = ["scripting"] }
+
+use xtreme::scripting::*;
+
+// Create runtime
+let mut runtime = ScriptRuntime::new();
+runtime.set_scripts_dir("./scripts".into());
+runtime.initialize()?;
+
+// Load and execute script
+let script_id = runtime.load_script("player.py", object_id)?;
+runtime.call_ready(script_id, &context)?;
+
+// In game loop
+runtime.call_update(script_id, delta_time, &context)?;
+```
+
+**Example Python Script** (`scripts/player.py`):
+
+```python
+# Player controller script
+
+speed = 5.0
+jump_force = 10.0
+
+def _ready(ctx):
+    """Called once when script is attached"""
+    print(f"Player ready! Object ID: {ctx['object_id']}")
+
+def _update(ctx, delta):
+    """Called every frame"""
+    transform = ctx['transform']
+
+    # Movement input
+    if is_key_pressed(ctx, 'W'):
+        transform['position'][2] -= speed * delta
+    if is_key_pressed(ctx, 'S'):
+        transform['position'][2] += speed * delta
+    if is_key_pressed(ctx, 'A'):
+        transform['position'][0] -= speed * delta
+    if is_key_pressed(ctx, 'D'):
+        transform['position'][0] += speed * delta
+
+    # Return modified transform
+    return {'transform': transform}
+
+def _physics_update(ctx, delta):
+    """Called at fixed physics rate"""
+    pass
 ```
 
 ### Editor (`xtreme::editor`)
@@ -325,9 +477,16 @@ use xtreme::editor::EditorApp;
 use xtreme::render::{WindowConfig, run};
 
 fn main() {
+    // Initialize logging
+    env_logger::Builder::from_env(
+        env_logger::Env::default().default_filter_or("info")
+    ).init();
+
     let app = EditorApp::new();
     let config = WindowConfig::new("Xtreme Editor")
-        .with_size(1280, 720);
+        .with_size(1280, 720)
+        .with_resizable(true);
+
     run(app, config).unwrap();
 }
 ```
@@ -342,6 +501,13 @@ fn main() {
 | `ml` | ONNX Runtime for ML inference | No |
 | `scripting` | Python scripting via pyo3 | No |
 
+Enable features in `Cargo.toml`:
+
+```toml
+[dependencies]
+xtreme-engine = { version = "0.1", features = ["ml", "scripting"] }
+```
+
 ### Build Profiles
 
 ```toml
@@ -351,6 +517,50 @@ opt-level = 1  # Faster iteration
 [profile.release]
 opt-level = 3
 lto = true     # Maximum optimization
+```
+
+## Scene File Format
+
+Scenes are saved in RON (Rusty Object Notation) or JSON format:
+
+```ron
+// example_scene.xtrm
+SceneData(
+    version: 2,
+    name: "My Scene",
+    camera_target: Some((0.0, 0.0, 0.0)),
+    camera_distance: Some(20.0),
+    objects: [
+        SceneObjectData(
+            name: "Player",
+            position: [0.0, 0.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+            scale: [1.0, 1.0, 1.0],
+            color: [0.2, 0.6, 1.0, 1.0],
+            visible: true,
+            parent_index: None,
+            scripts: ["player.py"],
+            camera: None,
+        ),
+        SceneObjectData(
+            name: "Main Camera",
+            position: [0.0, 5.0, 10.0],
+            rotation: [-0.5, 0.0, 0.0],
+            scale: [1.0, 1.0, 1.0],
+            color: [1.0, 1.0, 1.0, 1.0],
+            visible: true,
+            parent_index: None,
+            scripts: [],
+            camera: Some(CameraComponent(
+                projection: Perspective,
+                fov: 60.0,
+                near: 0.1,
+                far: 1000.0,
+                is_main: true,
+            )),
+        ),
+    ],
+)
 ```
 
 ## Development
@@ -379,6 +589,9 @@ RUST_LOG=debug cargo test -- --nocapture
 
 # Specific module
 cargo test core::
+
+# With all features
+cargo test --all-features
 ```
 
 ### Linting
@@ -408,36 +621,51 @@ cargo doc --open
 
 | Crate | Version | Purpose |
 |-------|---------|---------|
-| `wgpu` | 23.0 | Cross-platform GPU rendering |
+| `wgpu` | 27.0 | Cross-platform GPU rendering |
 | `winit` | 0.30 | Window management |
-| `glam` | 0.29 | Linear algebra |
-| `egui` | 0.30 | Immediate mode UI |
-| `serde` | 1.0 | Serialization |
+| `glam` | 0.29 | Linear algebra (Vec3, Mat4, Quat) |
+| `egui` | 0.33 | Immediate mode UI |
+| `serde` | 1.0 | Serialization framework |
 | `ron` | 0.8 | Rusty Object Notation |
 | `ort` | 2.0 | ONNX Runtime (optional) |
-| `pyo3` | 0.23 | Python bindings (optional) |
+| `pyo3` | 0.27 | Python bindings (optional) |
 
 ## Roadmap
 
+### Completed
 - [x] ECS Core (Entity, Component, World, Query)
 - [x] Archetype System
+- [x] System Scheduler with Stages
+- [x] Parent-Child Hierarchy
 - [x] Isometric math utilities
 - [x] Transform components
 - [x] Input handling (keyboard/mouse)
 - [x] Collision shapes (AABB, Sphere, OBB)
 - [x] A* Pathfinding
-- [x] AI structure
-- [x] Visual Editor
+- [x] AI Brain with State Machine
+- [x] Visual Editor with egui
 - [x] Prefab System
-- [x] Scene Save/Load
+- [x] Scene Save/Load (RON/JSON)
+- [x] Undo/Redo System
+- [x] Customizable Keyboard Shortcuts
+- [x] Python Scripting Integration
+- [x] Camera Component System
+- [x] Play Mode
+
+### In Progress
 - [ ] Complete WGPU rendering pipeline
 - [ ] WGSL Shaders
+- [ ] Texture/Material loading
+
+### Planned
 - [ ] Instanced mesh rendering
 - [ ] Shadow mapping
-- [ ] Audio system
+- [ ] Audio system (rodio)
 - [ ] Network multiplayer
 - [ ] Asset hot-reloading
 - [ ] WebGPU/WASM support
+- [ ] Animation system
+- [ ] Particle effects
 
 ## Contributing
 
@@ -449,7 +677,7 @@ cargo doc --open
 
 Please ensure:
 - Code passes `cargo fmt` and `cargo clippy`
-- All tests pass
+- All tests pass (`cargo test --all-features`)
 - New features include tests
 - Documentation is updated
 
@@ -468,3 +696,4 @@ Felipe Maya
 - [egui](https://github.com/emilk/egui) - Immediate mode GUI
 - [glam](https://github.com/bitshifter/glam-rs) - Fast math library
 - [ort](https://github.com/pykeio/ort) - ONNX Runtime bindings
+- [pyo3](https://github.com/PyO3/pyo3) - Rust bindings for Python
