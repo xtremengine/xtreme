@@ -20,7 +20,7 @@ struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) world_normal: vec3<f32>,
     @location(1) uv: vec2<f32>,
-    @location(2) world_pos: vec3<f32>,
+    @location(2) local_pos: vec3<f32>,  // Object space position for stable dissolve pattern
 }
 
 @vertex
@@ -30,7 +30,7 @@ fn vs_main(input: VertexInput) -> VertexOutput {
     output.clip_position = uniforms.view_proj * world_pos;
     output.world_normal = normalize((uniforms.model * vec4<f32>(input.normal, 0.0)).xyz);
     output.uv = input.uv;
-    output.world_pos = world_pos.xyz;
+    output.local_pos = input.position;  // Use local position for stable pattern
     return output;
 }
 
@@ -81,9 +81,9 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     // Dissolve threshold oscillates over time (0 to 1 and back)
     let dissolve_progress = (sin(time * 0.5) * 0.5 + 0.5);
 
-    // Generate noise pattern based on world position
+    // Generate noise pattern based on local position (stays fixed relative to object)
     let noise_scale = 3.0;
-    let noise_value = fbm3d(input.world_pos * noise_scale);
+    let noise_value = fbm3d(input.local_pos * noise_scale);
 
     // Dissolve edge width for glowing edge
     let edge_width = 0.1;

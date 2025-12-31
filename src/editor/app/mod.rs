@@ -25,6 +25,7 @@ mod prefab_actions;
 mod scene_io;
 mod splash;
 mod state;
+pub mod templates;
 mod ui;
 
 pub use state::EditorApp;

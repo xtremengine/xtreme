@@ -5,93 +5,15 @@ use std::path::Path;
 use glam::Vec3;
 
 use super::state::InputModifiers;
+use super::templates::{SCENE_TEMPLATE, SCRIPT_TEMPLATE, SHADER_TEMPLATE};
 use super::EditorApp;
 use crate::editor::gizmos::GizmoAxis;
-use crate::editor::panels::{AssetAction, HierarchyAction, Tool, ToolbarAction};
+use crate::editor::panels::{
+    draw_camera_settings, draw_snap_settings, AssetAction, HierarchyAction, Tool, ToolbarAction,
+};
+#[cfg(feature = "scripting")]
+use crate::editor::panels::ScriptsAction;
 use crate::editor::selection::SceneObject;
-#[allow(unused_imports)]
-use crate::render::IsometricCamera;
-
-/// Template for new WGSL shader files
-const SHADER_TEMPLATE: &str = r#"// Xtreme Engine Shader
-// Vertex and Fragment shader template
-
-struct Uniforms {
-    view_proj: mat4x4<f32>,
-    model: mat4x4<f32>,
-    color: vec4<f32>,
-}
-
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-
-struct VertexInput {
-    @location(0) position: vec3<f32>,
-    @location(1) normal: vec3<f32>,
-    @location(2) uv: vec2<f32>,
-}
-
-struct VertexOutput {
-    @builtin(position) clip_position: vec4<f32>,
-    @location(0) world_normal: vec3<f32>,
-    @location(1) uv: vec2<f32>,
-    @location(2) color: vec4<f32>,
-}
-
-@vertex
-fn vs_main(in: VertexInput) -> VertexOutput {
-    var out: VertexOutput;
-    out.clip_position = uniforms.view_proj * uniforms.model * vec4(in.position, 1.0);
-    out.world_normal = (uniforms.model * vec4(in.normal, 0.0)).xyz;
-    out.uv = in.uv;
-    out.color = uniforms.color;
-    return out;
-}
-
-@fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // Simple diffuse lighting
-    let light_dir = normalize(vec3(0.3, 1.0, 0.5));
-    let ambient = 0.3;
-    let diffuse = max(dot(normalize(in.world_normal), light_dir), 0.0);
-    let lighting = ambient + diffuse * 0.7;
-
-    return vec4(in.color.rgb * lighting, in.color.a);
-}
-"#;
-
-/// Template for new Python script files
-const SCRIPT_TEMPLATE: &str = r#"# Xtreme Engine Script
-# Lifecycle methods: _ready(ctx), _update(ctx, delta), _physics_update(ctx, delta)
-
-speed = 5.0
-
-def _ready(ctx):
-    """Called once when the script is attached to an object."""
-    print(f"Script ready on object {ctx['object_id']}")
-
-def _update(ctx, delta):
-    """Called every frame."""
-    transform = ctx['transform']
-
-    # Example: move forward over time
-    # transform['position'][2] -= speed * delta
-
-    return {'transform': transform}
-
-def _physics_update(ctx, delta):
-    """Called at fixed physics rate."""
-    pass
-"#;
-
-/// Template for new scene files
-const SCENE_TEMPLATE: &str = r#"SceneData(
-    version: 2,
-    name: "New Scene",
-    camera_target: Some((0.0, 0.0, 0.0)),
-    camera_distance: Some(15.0),
-    objects: [],
-)
-"#;
 
 /// Simple pseudo-random float [0, 1)
 pub fn rand_float() -> f32 {
@@ -377,187 +299,53 @@ impl EditorApp {
 
                 ui.separator();
 
-                // Camera controls (isolated to prevent ID collision with inspector)
-                ui.push_id("editor_camera_controls", |ui| {
-                    ui.heading("Camera");
-                    ui.horizontal(|ui| {
-                        ui.label("Distance:");
-                        ui.add(
-                            egui::DragValue::new(&mut self.camera.distance)
-                                .speed(0.1)
-                                .range(1.0..=100.0)
-                                .fixed_decimals(1),
-                        );
-                    });
-
-                    let mut pitch_deg = self.camera.pitch.to_degrees();
-                    ui.horizontal(|ui| {
-                        ui.label("Pitch:");
-                        if ui
-                            .add(
-                                egui::DragValue::new(&mut pitch_deg)
-                                    .speed(1.0)
-                                    .range(-89.0..=89.0)
-                                    .suffix("°")
-                                    .fixed_decimals(1),
-                            )
-                            .changed()
-                        {
-                            self.camera.pitch = pitch_deg.to_radians();
-                        }
-                    });
-
-                    let mut yaw_deg = self.camera.yaw.to_degrees();
-                    ui.horizontal(|ui| {
-                        ui.label("Yaw:");
-                        if ui
-                            .add(
-                                egui::DragValue::new(&mut yaw_deg)
-                                    .speed(1.0)
-                                    .suffix("°")
-                                    .fixed_decimals(1),
-                            )
-                            .changed()
-                        {
-                            self.camera.yaw = yaw_deg.to_radians();
-                        }
-                    });
-
-                    ui.horizontal(|ui| {
-                        ui.label("Zoom:");
-                        ui.add(
-                            egui::DragValue::new(&mut self.camera.zoom)
-                                .speed(0.1)
-                                .range(1.0..=50.0)
-                                .fixed_decimals(1),
-                        );
-                    });
-                });
+                // Camera controls
+                draw_camera_settings(ui, &mut self.camera);
 
                 ui.separator();
 
                 // Snap settings
-                ui.heading("Snap");
-                ui.checkbox(&mut self.snap_settings.enabled, "Enable Snap");
-
-                if self.snap_settings.enabled {
-                    ui.horizontal(|ui| {
-                        ui.label("Grid:");
-                        ui.add(
-                            egui::DragValue::new(&mut self.snap_settings.grid_size)
-                                .speed(0.1)
-                                .range(0.1..=10.0)
-                                .suffix(" u")
-                                .fixed_decimals(1),
-                        );
-                    });
-
-                    ui.horizontal(|ui| {
-                        ui.label("Rotation:");
-                        ui.add(
-                            egui::DragValue::new(&mut self.snap_settings.rotation_snap)
-                                .speed(1.0)
-                                .range(1.0..=90.0)
-                                .suffix("°")
-                                .fixed_decimals(0),
-                        );
-                    });
-
-                    ui.horizontal(|ui| {
-                        ui.label("Scale:");
-                        ui.add(
-                            egui::DragValue::new(&mut self.snap_settings.scale_snap)
-                                .speed(0.05)
-                                .range(0.01..=1.0)
-                                .fixed_decimals(2),
-                        );
-                    });
-
-                    ui.horizontal(|ui| {
-                        if ui.small_button("0.5").clicked() {
-                            self.snap_settings.grid_size = 0.5;
-                        }
-                        if ui.small_button("1.0").clicked() {
-                            self.snap_settings.grid_size = 1.0;
-                        }
-                        if ui.small_button("2.0").clicked() {
-                            self.snap_settings.grid_size = 2.0;
-                        }
-                    });
-                }
+                draw_snap_settings(ui, &mut self.snap_settings);
 
                 // Scripts section
-                self.draw_scripts_section(ui);
+                self.handle_scripts_section(ui);
             });
     }
 
-    fn draw_scripts_section(&mut self, ui: &mut egui::Ui) {
-        let Some(obj_id) = self.selection.first() else {
-            return;
-        };
-
-        ui.separator();
-        ui.heading("Scripts");
-
-        let script_ids: Vec<u32> = self
-            .scene_objects
-            .iter()
-            .find(|o| o.id == obj_id)
-            .map(|o| o.scripts.clone())
-            .unwrap_or_default();
-
-        if script_ids.is_empty() {
-            ui.label("No scripts attached");
-        } else {
-            let mut remove_script_id = None;
-            for script_id in &script_ids {
-                ui.horizontal(|ui| {
-                    #[cfg(feature = "scripting")]
-                    {
-                        if let Some(script) = self.script_runtime.get_script(*script_id) {
-                            ui.label(format!("[{}] {}", script_id, &script.name));
-                        } else {
-                            ui.label(format!("[{}] <unknown>", script_id));
-                        }
-                    }
-                    #[cfg(not(feature = "scripting"))]
-                    {
-                        ui.label(format!("[{}]", script_id));
-                    }
-
-                    if ui.small_button("X").clicked() {
-                        remove_script_id = Some(*script_id);
-                    }
-                });
-            }
-
-            if let Some(script_id) = remove_script_id {
-                if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == obj_id) {
-                    obj.scripts.retain(|&id| id != script_id);
-                }
-                #[cfg(feature = "scripting")]
-                self.script_runtime.detach_script(script_id);
-            }
-        }
-
+    fn handle_scripts_section(&mut self, ui: &mut egui::Ui) {
         #[cfg(feature = "scripting")]
         {
-            ui.horizontal(|ui| {
-                if ui.button("New Script...").clicked() {
+            use crate::editor::panels::draw_scripts_section;
+            let action = draw_scripts_section(
+                ui,
+                self.selection.first(),
+                &self.scene_objects,
+                &self.script_runtime,
+            );
+            match action {
+                ScriptsAction::ShowNewScriptDialog => {
                     self.show_script_dialog = true;
                     self.script_path_input.clear();
                 }
-                if ui.button("Attach Script...").clicked() {
+                ScriptsAction::ShowAttachScriptDialog => {
                     self.show_attach_script_dialog = true;
                 }
-            });
+                ScriptsAction::RemoveScript {
+                    object_id,
+                    script_id,
+                } => {
+                    if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == object_id) {
+                        obj.scripts.retain(|&id| id != script_id);
+                    }
+                    self.script_runtime.detach_script(script_id);
+                }
+                ScriptsAction::None => {}
+            }
         }
-
         #[cfg(not(feature = "scripting"))]
         {
-            ui.add_enabled(false, egui::Button::new("New Script..."));
-            ui.add_enabled(false, egui::Button::new("Attach Script..."));
-            ui.label("(Enable 'scripting' feature)");
+            use crate::editor::panels::scripts::draw_scripts_section_disabled;
+            draw_scripts_section_disabled(ui, self.selection.first());
         }
     }
 
