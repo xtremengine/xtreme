@@ -8,11 +8,11 @@ use super::state::InputModifiers;
 use super::templates::{SCENE_TEMPLATE, SCRIPT_TEMPLATE, SHADER_TEMPLATE};
 use super::EditorApp;
 use crate::editor::gizmos::GizmoAxis;
+#[cfg(feature = "scripting")]
+use crate::editor::panels::ScriptsAction;
 use crate::editor::panels::{
     draw_camera_settings, draw_snap_settings, AssetAction, HierarchyAction, Tool, ToolbarAction,
 };
-#[cfg(feature = "scripting")]
-use crate::editor::panels::ScriptsAction;
 use crate::editor::selection::SceneObject;
 
 /// Simple pseudo-random float [0, 1)
