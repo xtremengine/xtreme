@@ -40,6 +40,7 @@ impl EditorApp {
                     model,
                     color,
                     texture_path: o.texture_path.clone(),
+                    shader_path: o.shader_path.clone(),
                 });
             }
         }
@@ -155,6 +156,14 @@ impl App for EditorApp {
             return;
         };
 
+        // Update editor time for shader animations
+        let now = std::time::Instant::now();
+        if let Some(last) = self.last_frame_instant {
+            let delta = now.duration_since(last).as_secs_f32();
+            self.editor_time += delta;
+        }
+        self.last_frame_instant = Some(now);
+
         let mut encoder = ctx.create_encoder("Editor Frame");
 
         // Get render data (regular objects and cameras separately)
@@ -171,9 +180,15 @@ impl App for EditorApp {
         }
 
         // Render viewport
-        if let Some(viewport) = &self.viewport {
+        if let Some(viewport) = &mut self.viewport {
             // Render regular objects as cubes
-            viewport.render_objects(ctx, &mut encoder, &self.camera, &regular_objects);
+            viewport.render_objects(
+                ctx,
+                &mut encoder,
+                &self.camera,
+                &regular_objects,
+                self.editor_time,
+            );
 
             // Render camera objects as wireframe pyramids
             viewport.render_camera_wireframes(ctx, &mut encoder, &self.camera, &camera_objects);

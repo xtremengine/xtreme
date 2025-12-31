@@ -104,6 +104,7 @@ impl GameWindow {
                 view_proj: view_proj.to_cols_array_2d(),
                 model: model.to_cols_array_2d(),
                 color: obj.color,
+                time: [self.play_time, 0.0, 0.0, 0.0],
             };
 
             let offset = (i as u32 * aligned_size) as u64;
@@ -152,13 +153,41 @@ impl GameWindow {
 
     /// Render scene objects
     fn render_objects(
-        &self,
+        &mut self,
         encoder: &mut wgpu::CommandEncoder,
         view: &wgpu::TextureView,
         num_objects: usize,
     ) {
         let uniform_size = std::mem::size_of::<Uniforms>() as u32;
         let aligned_size = uniform_size.div_ceil(self.uniform_alignment) * self.uniform_alignment;
+
+        // Collect object data before render pass (to allow shader compilation)
+        struct ObjectData {
+            index: usize,
+            visible: bool,
+            texture_path: Option<String>,
+            shader_path: Option<String>,
+        }
+
+        let objects_data: Vec<ObjectData> = self
+            .scene_objects
+            .iter()
+            .take(num_objects)
+            .enumerate()
+            .map(|(i, obj)| ObjectData {
+                index: i,
+                visible: obj.visible,
+                texture_path: obj.texture_path.clone(),
+                shader_path: obj.shader_path.clone(),
+            })
+            .collect();
+
+        // Pre-compile custom shaders
+        for obj in &objects_data {
+            if let Some(ref path) = obj.shader_path {
+                let _ = self.shader_cache.get_or_compile(&self.ctx.device, path);
+            }
+        }
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Game Mesh Pass"),
@@ -183,12 +212,12 @@ impl GameWindow {
             occlusion_query_set: None,
         });
 
-        for (i, obj) in self.scene_objects.iter().take(num_objects).enumerate() {
+        for obj in &objects_data {
             if !obj.visible {
                 continue;
             }
 
-            let dynamic_offset = i as u32 * aligned_size;
+            let dynamic_offset = obj.index as u32 * aligned_size;
 
             // Check if object has texture
             let has_texture = obj
@@ -197,7 +226,25 @@ impl GameWindow {
                 .map(|p| self.texture_cache.contains_key(p))
                 .unwrap_or(false);
 
-            if has_texture {
+            // Check if object has custom shader
+            let custom_shader = obj
+                .shader_path
+                .as_ref()
+                .and_then(|path| self.shader_cache.get_or_compile(&self.ctx.device, path));
+
+            if let Some(cached_shader) = custom_shader {
+                // Use custom shader pipeline
+                pass.set_pipeline(&cached_shader.pipeline);
+                pass.set_bind_group(0, &self.mesh_bind_group, &[dynamic_offset]);
+
+                // If shader uses texture and object has one, bind it
+                if cached_shader.uses_texture && has_texture {
+                    let texture_path = obj.texture_path.as_ref().unwrap();
+                    if let Some(cached) = self.texture_cache.get(texture_path) {
+                        pass.set_bind_group(1, &cached.bind_group, &[]);
+                    }
+                }
+            } else if has_texture {
                 // Use textured pipeline
                 pass.set_pipeline(&self.textured_pipeline);
                 pass.set_bind_group(0, &self.mesh_bind_group, &[dynamic_offset]);

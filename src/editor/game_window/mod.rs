@@ -13,6 +13,7 @@ use winit::window::Window;
 use winit::window::WindowAttributes;
 
 use crate::editor::selection::SceneObject;
+use crate::editor::viewport::ShaderCache;
 use crate::render::{EguiIntegration, GpuMesh, Mesh, RenderContext, Texture, Uniforms};
 
 /// Cached texture for game window
@@ -107,6 +108,8 @@ pub struct GameWindow {
     pub(crate) current_fps: f32,
     /// Texture cache
     pub(crate) texture_cache: HashMap<String, GameTexture>,
+    /// Shader cache for custom shaders
+    pub(crate) shader_cache: ShaderCache,
 }
 
 impl GameWindow {
@@ -284,52 +287,52 @@ impl GameWindow {
         let texture_bind_group_layout = Texture::bind_group_layout(&ctx.device);
 
         // Create textured pipeline layout
-        let textured_pipeline_layout = ctx
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Game Textured Pipeline Layout"),
-                bind_group_layouts: &[&mesh_bind_group_layout, &texture_bind_group_layout],
-                push_constant_ranges: &[],
-            });
+        let textured_pipeline_layout =
+            ctx.device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Game Textured Pipeline Layout"),
+                    bind_group_layouts: &[&mesh_bind_group_layout, &texture_bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
         // Create textured pipeline
-        let textured_pipeline = ctx
-            .device
-            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("Game Textured Pipeline"),
-                layout: Some(&textured_pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &textured_shader,
-                    entry_point: Some("vs_main"),
-                    buffers: &[vertex_buffer_layout],
-                    compilation_options: Default::default(),
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &textured_shader,
-                    entry_point: Some("fs_main"),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: ctx.format(),
-                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: Default::default(),
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    cull_mode: Some(wgpu::Face::Back),
-                    ..Default::default()
-                },
-                depth_stencil: Some(wgpu::DepthStencilState {
-                    format: wgpu::TextureFormat::Depth32Float,
-                    depth_write_enabled: true,
-                    depth_compare: wgpu::CompareFunction::Less,
-                    stencil: wgpu::StencilState::default(),
-                    bias: wgpu::DepthBiasState::default(),
-                }),
-                multisample: wgpu::MultisampleState::default(),
-                multiview: None,
-                cache: None,
-            });
+        let textured_pipeline =
+            ctx.device
+                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("Game Textured Pipeline"),
+                    layout: Some(&textured_pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &textured_shader,
+                        entry_point: Some("vs_main"),
+                        buffers: &[vertex_buffer_layout],
+                        compilation_options: Default::default(),
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        module: &textured_shader,
+                        entry_point: Some("fs_main"),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: ctx.format(),
+                            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                        compilation_options: Default::default(),
+                    }),
+                    primitive: wgpu::PrimitiveState {
+                        topology: wgpu::PrimitiveTopology::TriangleList,
+                        cull_mode: Some(wgpu::Face::Back),
+                        ..Default::default()
+                    },
+                    depth_stencil: Some(wgpu::DepthStencilState {
+                        format: wgpu::TextureFormat::Depth32Float,
+                        depth_write_enabled: true,
+                        depth_compare: wgpu::CompareFunction::Less,
+                        stencil: wgpu::StencilState::default(),
+                        bias: wgpu::DepthBiasState::default(),
+                    }),
+                    multisample: wgpu::MultisampleState::default(),
+                    multiview: None,
+                    cache: None,
+                });
 
         // Create cube mesh
         let cube = Mesh::cube(1.0);
@@ -351,6 +354,10 @@ impl GameWindow {
             None
         };
 
+        // Create shader cache
+        let shader_cache =
+            ShaderCache::new(&ctx.device, mesh_bind_group_layout.clone(), ctx.format());
+
         // Preload textures for scene objects
         let mut texture_cache = HashMap::new();
         for obj in &scene_objects {
@@ -359,7 +366,13 @@ impl GameWindow {
                     if let Ok(texture) = Texture::from_file(&ctx.device, &ctx.queue, path) {
                         let bind_group =
                             texture.create_bind_group(&ctx.device, &texture_bind_group_layout);
-                        texture_cache.insert(path.clone(), GameTexture { texture, bind_group });
+                        texture_cache.insert(
+                            path.clone(),
+                            GameTexture {
+                                texture,
+                                bind_group,
+                            },
+                        );
                         log::info!("Game: Loaded texture {}", path);
                     } else {
                         log::warn!("Game: Failed to load texture {}", path);
@@ -393,6 +406,7 @@ impl GameWindow {
             fps_samples: Vec::with_capacity(60),
             current_fps: 60.0,
             texture_cache,
+            shader_cache,
         })
     }
 

@@ -19,6 +19,8 @@ pub struct Uniforms {
     pub model: [[f32; 4]; 4],
     /// Object color
     pub color: [f32; 4],
+    /// Time vector: x = time in seconds, yzw = padding (for 16-byte alignment)
+    pub time: [f32; 4],
 }
 
 impl Default for Uniforms {
@@ -27,6 +29,7 @@ impl Default for Uniforms {
             view_proj: Mat4::IDENTITY.to_cols_array_2d(),
             model: Mat4::IDENTITY.to_cols_array_2d(),
             color: [1.0, 1.0, 1.0, 1.0],
+            time: [0.0; 4],
         }
     }
 }

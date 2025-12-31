@@ -110,6 +110,8 @@ pub struct EditorApp {
     pub(crate) saved_scene_state: Vec<SceneObject>,
     /// Elapsed time in play mode
     pub(crate) play_time: f32,
+    /// Elapsed time in editor (for shader animations)
+    pub(crate) editor_time: f32,
     /// Last frame instant for delta calculation
     pub(crate) last_frame_instant: Option<std::time::Instant>,
     /// Whether to show splash screen (deprecated - now using game window)
@@ -194,6 +196,7 @@ impl EditorApp {
             is_playing: false,
             saved_scene_state: Vec::new(),
             play_time: 0.0,
+            editor_time: 0.0,
             last_frame_instant: None,
             show_splash: false,
             splash_start_time: None,

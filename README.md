@@ -20,7 +20,8 @@ A modular ECS game engine with isometric 3D rendering and ML-powered AI, built i
 - **Isometric Camera**: Orthographic projection with configurable angle
 - **Material System**: Shader and texture management with PBR support
 - **Texture Rendering**: Full texture pipeline with caching and alpha blending
-- **WGSL Shaders**: Custom shaders for basic and textured rendering
+- **Custom Shaders**: Per-object WGSL shaders with runtime compilation
+- **Animated Shaders**: Time-based effects (noise, color cycling, dissolve, etc.)
 - **Mesh Primitives**: Cubes, spheres, planes, and custom geometry
 - **Egui Integration**: Immediate mode UI for editor and debug
 - **Camera Components**: Per-entity cameras with perspective/orthographic projection
@@ -657,9 +658,8 @@ cargo doc --open
 - [x] WGSL Shaders (basic + textured)
 - [x] Texture/Material Loading with Alpha Blending
 - [x] Resizable Asset Browser Panel
-
-### In Progress
-- [ ] Asset Creation Tools (shaders, textures)
+- [x] Custom Shaders per Object (runtime compilation)
+- [x] Animated Shader Effects (time-based)
 
 ### Planned
 - [ ] Instanced mesh rendering

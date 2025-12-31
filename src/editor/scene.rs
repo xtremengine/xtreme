@@ -39,6 +39,9 @@ pub struct SceneObjectData {
     /// Texture path (relative to project)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub texture_path: Option<String>,
+    /// Shader path (relative to project, .wgsl file)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shader_path: Option<String>,
 }
 
 impl SceneObjectData {
@@ -280,6 +283,7 @@ mod tests {
             scripts: Vec::new(),
             camera: None,
             texture_path: None,
+            shader_path: None,
         });
 
         let temp = NamedTempFile::new().unwrap();

@@ -8,9 +8,11 @@
 //! - `render.rs` - Rendering methods
 
 mod render;
+mod shader_cache;
 mod textures;
 mod types;
 
+pub use shader_cache::ShaderCache;
 #[allow(unused_imports)]
 pub use types::{GizmoUniforms, GridUniforms};
 
@@ -32,6 +34,8 @@ pub struct ObjectRenderData {
     pub color: [f32; 4],
     /// Optional texture path
     pub texture_path: Option<String>,
+    /// Optional shader path (.wgsl file)
+    pub shader_path: Option<String>,
 }
 
 /// Cached texture data with bind group
@@ -94,6 +98,11 @@ pub struct Viewport {
     pub(crate) default_texture_bind_group: wgpu::BindGroup,
     /// Texture cache: path -> cached texture
     pub(crate) texture_cache: HashMap<String, CachedTexture>,
+    /// Shader cache for custom shaders
+    pub(crate) shader_cache: ShaderCache,
+    /// Mesh bind group layout (for shader cache)
+    #[allow(dead_code)]
+    pub(crate) mesh_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl Viewport {
@@ -539,6 +548,28 @@ impl Viewport {
         let default_texture_bind_group =
             default_texture.create_bind_group(device, &texture_bind_group_layout);
 
+        // Create shader cache with its own bind group layout
+        let shader_cache_mesh_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Shader Cache Mesh Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: true,
+                        min_binding_size: wgpu::BufferSize::new(uniform_size as u64),
+                    },
+                    count: None,
+                }],
+            });
+
+        let shader_cache = ShaderCache::new(
+            device,
+            shader_cache_mesh_layout,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+        );
+
         Self {
             size: (width, height),
             render_texture,
@@ -564,6 +595,8 @@ impl Viewport {
             texture_bind_group_layout,
             default_texture_bind_group,
             texture_cache: HashMap::new(),
+            shader_cache,
+            mesh_bind_group_layout,
         }
     }
 

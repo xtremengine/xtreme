@@ -71,6 +71,7 @@ pub enum AssetAction {
     CreateTexture(PathBuf),
     CreateScript(PathBuf),
     CreateScene(PathBuf),
+    AssignShader(PathBuf),
 }
 
 /// Asset browser panel
@@ -344,6 +345,10 @@ impl AssetBrowser {
                                 }
                             }
                             AssetType::Shader => {
+                                if ui.button("Assign to Selected").clicked() {
+                                    action = AssetAction::AssignShader(entry.path.clone());
+                                    ui.close();
+                                }
                                 if ui.button("Edit Shader").clicked() {
                                     action = AssetAction::OpenScript(entry.path.clone());
                                     ui.close();

@@ -300,6 +300,19 @@ impl EditorApp {
                 // Textures should be imported, not created
                 log::info!("Import textures using external tools");
             }
+            AssetAction::AssignShader(path) => {
+                // Assign shader to selected object(s)
+                let path_str = path.to_string_lossy().to_string();
+                for &id in self.selection.all() {
+                    if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == id) {
+                        obj.shader_path = Some(path_str.clone());
+                    }
+                }
+                if !self.selection.is_empty() {
+                    log::info!("Assigned shader {} to selected objects", path_str);
+                    self.scene_manager.mark_dirty();
+                }
+            }
             AssetAction::OpenDirectory(_) => {}
             AssetAction::None => {}
         }

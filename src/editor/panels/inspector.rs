@@ -344,6 +344,40 @@ impl InspectorPanel {
                         changed = true;
                     }
                 }
+
+                ui.separator();
+
+                // Shader
+                ui.horizontal(|ui| {
+                    ui.label("Shader:");
+                    if let Some(ref path) = obj.shader_path {
+                        // Show filename only
+                        let filename = std::path::Path::new(path)
+                            .file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_else(|| path.clone());
+                        ui.label(&filename);
+                        if ui.small_button("X").clicked() {
+                            obj.shader_path = None;
+                            changed = true;
+                        }
+                    } else {
+                        ui.label("Default");
+                    }
+                });
+
+                // Browse button for shader
+                if ui.button("Browse Shader...").clicked() {
+                    if let Some(path) = rfd::FileDialog::new()
+                        .add_filter("WGSL Shader", &["wgsl"])
+                        .add_filter("All Shaders", &["wgsl", "glsl", "hlsl"])
+                        .set_title("Select Shader")
+                        .pick_file()
+                    {
+                        obj.shader_path = Some(path.to_string_lossy().to_string());
+                        changed = true;
+                    }
+                }
             });
 
             // Camera section (only if object has camera component)

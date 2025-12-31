@@ -40,6 +40,7 @@ impl Viewport {
                 view_proj: view_proj.to_cols_array_2d(),
                 model: model.to_cols_array_2d(),
                 color: *color,
+                time: [0.0, 0.0, 0.0, 0.0],
             };
             let offset = (i as u32 * aligned_size) as u64;
             ctx.queue.write_buffer(
@@ -146,13 +147,14 @@ impl Viewport {
         }
     }
 
-    /// Render objects with texture support
+    /// Render objects with texture and custom shader support
     pub fn render_objects(
-        &self,
+        &mut self,
         ctx: &RenderContext,
         encoder: &mut wgpu::CommandEncoder,
         camera: &IsometricCamera,
         objects: &[ObjectRenderData],
+        time: f32,
     ) {
         // Update grid uniforms
         let view_proj = camera.view_projection_matrix();
@@ -178,6 +180,7 @@ impl Viewport {
                 view_proj: view_proj.to_cols_array_2d(),
                 model: obj.model.to_cols_array_2d(),
                 color: obj.color,
+                time: [time, 0.0, 0.0, 0.0],
             };
             let offset = (i as u32 * aligned_size) as u64;
             ctx.queue.write_buffer(
@@ -254,7 +257,25 @@ impl Viewport {
                     .map(|p| self.texture_cache.contains_key(p))
                     .unwrap_or(false);
 
-                if has_texture {
+                // Check if object has custom shader
+                let custom_shader = obj
+                    .shader_path
+                    .as_ref()
+                    .and_then(|path| self.shader_cache.get_or_compile(&ctx.device, path));
+
+                if let Some(cached_shader) = custom_shader {
+                    // Use custom shader pipeline
+                    pass.set_pipeline(&cached_shader.pipeline);
+                    pass.set_bind_group(0, &self.mesh_bind_group, &[dynamic_offset]);
+
+                    // Set texture if shader uses it and we have one
+                    if cached_shader.uses_texture && has_texture {
+                        let texture_path = obj.texture_path.as_ref().unwrap();
+                        if let Some(cached) = self.texture_cache.get(texture_path) {
+                            pass.set_bind_group(1, &cached.bind_group, &[]);
+                        }
+                    }
+                } else if has_texture {
                     // Use textured pipeline
                     pass.set_pipeline(&self.textured_pipeline);
                     pass.set_bind_group(0, &self.mesh_bind_group, &[dynamic_offset]);
