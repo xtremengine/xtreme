@@ -1,7 +1,7 @@
 //! # AI Perception System
 
-use glam::Vec3;
 use crate::core::{Component, Entity};
+use glam::Vec3;
 
 /// Sensory information about a perceived entity
 #[derive(Clone, Debug)]
@@ -110,7 +110,8 @@ impl PerceptionMemory {
         for p in &mut self.perceived {
             p.time_since_seen += dt;
         }
-        self.perceived.retain(|p| p.time_since_seen < self.memory_duration);
+        self.perceived
+            .retain(|p| p.time_since_seen < self.memory_duration);
     }
 
     /// Update or add a perception

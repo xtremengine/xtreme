@@ -35,10 +35,13 @@ impl EditorApp {
                             self.prefab_name_input.clear();
                         }
 
-                        if ui.add_enabled(
-                            !self.prefab_name_input.is_empty(),
-                            egui::Button::new("Create")
-                        ).clicked() {
+                        if ui
+                            .add_enabled(
+                                !self.prefab_name_input.is_empty(),
+                                egui::Button::new("Create"),
+                            )
+                            .clicked()
+                        {
                             create = true;
                         }
                     });

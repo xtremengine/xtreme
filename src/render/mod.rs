@@ -19,22 +19,22 @@
 //!             └── Bind groups (uniforms, textures)
 //! ```
 
-mod context;
-mod window;
 mod camera;
-mod vertex;
-mod mesh;
-mod material;
-mod texture;
-mod pipeline;
+mod context;
 mod egui_integration;
+mod material;
+mod mesh;
+mod pipeline;
+mod texture;
+mod vertex;
+mod window;
 
+pub use camera::{Camera, CameraController, IsometricCamera};
 pub use context::{RenderContext, RenderContextBuilder, RenderError};
-pub use window::{Window, WindowConfig, App, AppEvent, run};
-pub use camera::{Camera, IsometricCamera, CameraController};
-pub use vertex::{Vertex, VertexLayout};
-pub use mesh::{Mesh, MeshBuilder, Primitive, GpuMesh};
-pub use material::{Material, Shader};
-pub use texture::{Texture, Sampler};
-pub use pipeline::{RenderPipeline, RenderPass, Uniforms};
 pub use egui_integration::EguiIntegration;
+pub use material::{Material, Shader};
+pub use mesh::{GpuMesh, Mesh, MeshBuilder, Primitive};
+pub use pipeline::{RenderPass, RenderPipeline, Uniforms};
+pub use texture::{Sampler, Texture};
+pub use vertex::{Vertex, VertexLayout};
+pub use window::{run, App, AppEvent, Window, WindowConfig};

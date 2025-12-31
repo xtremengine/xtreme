@@ -1,11 +1,11 @@
 //! Scene save/load actions.
 
-use std::path::PathBuf;
 use std::collections::HashMap;
+use std::path::PathBuf;
 
-use crate::editor::selection::SceneObject;
-use crate::editor::scene::{SceneData, SceneObjectData};
 use super::EditorApp;
+use crate::editor::scene::{SceneData, SceneObjectData};
+use crate::editor::selection::SceneObject;
 
 impl EditorApp {
     /// Save current scene
@@ -13,25 +13,32 @@ impl EditorApp {
         let mut scene_data = SceneData::new(
             path.file_stem()
                 .and_then(|s| s.to_str())
-                .unwrap_or("Untitled")
+                .unwrap_or("Untitled"),
         );
 
         scene_data.camera_target = Some(self.camera.target.to_array());
         scene_data.camera_distance = Some(self.camera.distance);
 
         // Create a map from object id to index in the save order
-        let id_to_index: HashMap<u32, usize> = self.scene_objects.iter()
+        let id_to_index: HashMap<u32, usize> = self
+            .scene_objects
+            .iter()
             .enumerate()
             .map(|(idx, obj)| (obj.id, idx))
             .collect();
 
         // Collect script paths for each object
         #[cfg(feature = "scripting")]
-        let script_paths: HashMap<u32, Vec<String>> = self.scene_objects.iter()
+        let script_paths: HashMap<u32, Vec<String>> = self
+            .scene_objects
+            .iter()
             .map(|obj| {
-                let paths: Vec<String> = obj.scripts.iter()
+                let paths: Vec<String> = obj
+                    .scripts
+                    .iter()
                     .filter_map(|&script_id| {
-                        self.script_runtime.get_script(script_id)
+                        self.script_runtime
+                            .get_script(script_id)
                             .map(|s| s.path.to_string_lossy().to_string())
                     })
                     .collect();
@@ -46,7 +53,9 @@ impl EditorApp {
             let scripts = Vec::new();
 
             // Convert parent id to parent index
-            let parent_index = obj.hierarchy.parent
+            let parent_index = obj
+                .hierarchy
+                .parent
                 .and_then(|parent_id| id_to_index.get(&parent_id).copied());
 
             scene_data.add_object(SceneObjectData {
@@ -120,12 +129,16 @@ impl EditorApp {
                             let child_id = index_to_id[idx];
 
                             // Set parent on child
-                            if let Some(child) = self.scene_objects.iter_mut().find(|o| o.id == child_id) {
+                            if let Some(child) =
+                                self.scene_objects.iter_mut().find(|o| o.id == child_id)
+                            {
                                 child.hierarchy.parent = Some(parent_id);
                             }
 
                             // Add child to parent's children list
-                            if let Some(parent) = self.scene_objects.iter_mut().find(|o| o.id == parent_id) {
+                            if let Some(parent) =
+                                self.scene_objects.iter_mut().find(|o| o.id == parent_id)
+                            {
                                 parent.hierarchy.add_child(child_id);
                             }
                         }
@@ -139,15 +152,28 @@ impl EditorApp {
                     for script_path in &obj_data.scripts {
                         let script_path_buf = PathBuf::from(script_path);
                         if script_path_buf.exists() {
-                            match self.script_runtime.attach_script(script_path_buf.clone(), obj_id) {
+                            match self
+                                .script_runtime
+                                .attach_script(script_path_buf.clone(), obj_id)
+                            {
                                 Ok(script_id) => {
-                                    if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == obj_id) {
+                                    if let Some(obj) =
+                                        self.scene_objects.iter_mut().find(|o| o.id == obj_id)
+                                    {
                                         obj.scripts.push(script_id);
                                     }
-                                    log::info!("Re-attached script {:?} to object {}", script_path, obj_id);
+                                    log::info!(
+                                        "Re-attached script {:?} to object {}",
+                                        script_path,
+                                        obj_id
+                                    );
                                 }
                                 Err(e) => {
-                                    log::error!("Failed to re-attach script {:?}: {}", script_path, e);
+                                    log::error!(
+                                        "Failed to re-attach script {:?}: {}",
+                                        script_path,
+                                        e
+                                    );
                                 }
                             }
                         } else {

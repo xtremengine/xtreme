@@ -106,41 +106,37 @@ impl SceneData {
         let data = ron::ser::to_string_pretty(self, config)
             .map_err(|e| SceneError::Serialize(e.to_string()))?;
 
-        fs::write(path, data)
-            .map_err(|e| SceneError::Io(e.to_string()))?;
+        fs::write(path, data).map_err(|e| SceneError::Io(e.to_string()))?;
 
         Ok(())
     }
 
     /// Load from RON file
     pub fn load_ron(path: &Path) -> Result<Self, SceneError> {
-        let data = fs::read_to_string(path)
-            .map_err(|e| SceneError::Io(e.to_string()))?;
+        let data = fs::read_to_string(path).map_err(|e| SceneError::Io(e.to_string()))?;
 
-        let scene: SceneData = ron::from_str(&data)
-            .map_err(|e| SceneError::Deserialize(e.to_string()))?;
+        let scene: SceneData =
+            ron::from_str(&data).map_err(|e| SceneError::Deserialize(e.to_string()))?;
 
         Ok(scene)
     }
 
     /// Save to JSON file
     pub fn save_json(&self, path: &Path) -> Result<(), SceneError> {
-        let data = serde_json::to_string_pretty(self)
-            .map_err(|e| SceneError::Serialize(e.to_string()))?;
+        let data =
+            serde_json::to_string_pretty(self).map_err(|e| SceneError::Serialize(e.to_string()))?;
 
-        fs::write(path, data)
-            .map_err(|e| SceneError::Io(e.to_string()))?;
+        fs::write(path, data).map_err(|e| SceneError::Io(e.to_string()))?;
 
         Ok(())
     }
 
     /// Load from JSON file
     pub fn load_json(path: &Path) -> Result<Self, SceneError> {
-        let data = fs::read_to_string(path)
-            .map_err(|e| SceneError::Io(e.to_string()))?;
+        let data = fs::read_to_string(path).map_err(|e| SceneError::Io(e.to_string()))?;
 
-        let scene: SceneData = serde_json::from_str(&data)
-            .map_err(|e| SceneError::Deserialize(e.to_string()))?;
+        let scene: SceneData =
+            serde_json::from_str(&data).map_err(|e| SceneError::Deserialize(e.to_string()))?;
 
         Ok(scene)
     }
@@ -149,7 +145,7 @@ impl SceneData {
     pub fn save(&self, path: &Path) -> Result<(), SceneError> {
         match path.extension().and_then(|e| e.to_str()) {
             Some("json") => self.save_json(path),
-            Some("ron") | _ => self.save_ron(path),
+            _ => self.save_ron(path), // Default to RON format
         }
     }
 
@@ -157,7 +153,7 @@ impl SceneData {
     pub fn load(path: &Path) -> Result<Self, SceneError> {
         match path.extension().and_then(|e| e.to_str()) {
             Some("json") => Self::load_json(path),
-            Some("ron") | _ => Self::load_ron(path),
+            _ => Self::load_ron(path), // Default to RON format
         }
     }
 }
@@ -238,7 +234,8 @@ impl SceneManager {
 
     /// Set current path after save
     pub fn set_path(&mut self, path: std::path::PathBuf) {
-        self.scene_name = path.file_stem()
+        self.scene_name = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("Untitled")
             .to_string();

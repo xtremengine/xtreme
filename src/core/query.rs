@@ -93,9 +93,9 @@ impl<'w, P: QueryParam> Query<'w, P> {
         let entities: Vec<Entity> = world
             .entities()
             .filter(|&entity| {
-                type_ids.iter().all(|&type_id| {
-                    world.has_component_by_id(entity, type_id)
-                })
+                type_ids
+                    .iter()
+                    .all(|&type_id| world.has_component_by_id(entity, type_id))
             })
             .collect();
 
@@ -144,20 +144,18 @@ impl World {
 
     /// Create a query for single component type
     pub fn query_one<T: Component>(&self) -> impl Iterator<Item = (Entity, &T)> {
-        self.storage::<T>()
-            .into_iter()
-            .flat_map(|storage| {
-                storage.iter().filter_map(|(idx, component)| {
-                    // Reconstruct entity from index
-                    let generation = self.entity_generation(idx)?;
-                    let entity = Entity::new(idx, generation);
-                    if self.is_alive(entity) {
-                        Some((entity, component))
-                    } else {
-                        None
-                    }
-                })
+        self.storage::<T>().into_iter().flat_map(|storage| {
+            storage.iter().filter_map(|(idx, component)| {
+                // Reconstruct entity from index
+                let generation = self.entity_generation(idx)?;
+                let entity = Entity::new(idx, generation);
+                if self.is_alive(entity) {
+                    Some((entity, component))
+                } else {
+                    None
+                }
             })
+        })
     }
 
     /// Query with mutable access to single component
@@ -178,37 +176,32 @@ pub struct QueryOneMut<'w, T: Component> {
 impl<'w, T: Component> QueryOneMut<'w, T> {
     /// Iterate with mutable access
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (u32, &mut T)> + use<'_, 'w, T> {
-        self.storage
-            .as_mut()
-            .into_iter()
-            .flat_map(|s| s.iter_mut())
+        self.storage.as_mut().into_iter().flat_map(|s| s.iter_mut())
     }
 }
 
-/// Tuple implementations for multi-component queries would go here
-/// For simplicity, providing a manual two-component version
-
+/// Tuple implementations for multi-component queries would go here.
+/// For simplicity, providing a manual two-component version.
+///
 /// Query for two components (read-only)
-pub fn query_two<'w, A: Component, B: Component>(
-    world: &'w World,
-) -> impl Iterator<Item = (Entity, &'w A, &'w B)> {
+pub fn query_two<A: Component, B: Component>(
+    world: &World,
+) -> impl Iterator<Item = (Entity, &A, &B)> {
     // Use the smaller storage as base for iteration
     let storage_a = world.storage::<A>();
     let storage_b = world.storage::<B>();
 
-    storage_a
-        .into_iter()
-        .flat_map(move |sa| {
-            sa.iter().filter_map(move |(idx, comp_a)| {
-                let generation = world.entity_generation(idx)?;
-                let entity = Entity::new(idx, generation);
-                if !world.is_alive(entity) {
-                    return None;
-                }
-                let comp_b = storage_b?.get(entity)?;
-                Some((entity, comp_a, comp_b))
-            })
+    storage_a.into_iter().flat_map(move |sa| {
+        sa.iter().filter_map(move |(idx, comp_a)| {
+            let generation = world.entity_generation(idx)?;
+            let entity = Entity::new(idx, generation);
+            if !world.is_alive(entity) {
+                return None;
+            }
+            let comp_b = storage_b?.get(entity)?;
+            Some((entity, comp_a, comp_b))
         })
+    })
 }
 
 #[cfg(test)]
@@ -216,11 +209,17 @@ mod tests {
     use super::*;
 
     #[derive(Debug, PartialEq, Clone)]
-    struct Position { x: f32, y: f32 }
+    struct Position {
+        x: f32,
+        y: f32,
+    }
     impl Component for Position {}
 
     #[derive(Debug, PartialEq, Clone)]
-    struct Velocity { dx: f32, dy: f32 }
+    struct Velocity {
+        dx: f32,
+        dy: f32,
+    }
     impl Component for Velocity {}
 
     #[test]

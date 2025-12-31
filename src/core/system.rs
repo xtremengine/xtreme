@@ -120,10 +120,10 @@ impl SystemScheduler {
     /// Add a function as a system
     pub fn add_system(&mut self, stage: Stage, system: fn(&mut World)) -> &mut Self {
         let name = format!("fn_system_{}", self.stages[&stage].len());
-        self.stages.get_mut(&stage).unwrap().push(Box::new(FnSystem {
-            name,
-            func: system,
-        }));
+        self.stages
+            .get_mut(&stage)
+            .unwrap()
+            .push(Box::new(FnSystem { name, func: system }));
         self
     }
 
@@ -134,22 +134,33 @@ impl SystemScheduler {
         name: impl Into<String>,
         system: fn(&mut World),
     ) -> &mut Self {
-        self.stages.get_mut(&stage).unwrap().push(Box::new(FnSystem {
-            name: name.into(),
-            func: system,
-        }));
+        self.stages
+            .get_mut(&stage)
+            .unwrap()
+            .push(Box::new(FnSystem {
+                name: name.into(),
+                func: system,
+            }));
         self
     }
 
     /// Add a closure as a system
-    pub fn add_system_boxed<F>(&mut self, stage: Stage, name: impl Into<String>, system: F) -> &mut Self
+    pub fn add_system_boxed<F>(
+        &mut self,
+        stage: Stage,
+        name: impl Into<String>,
+        system: F,
+    ) -> &mut Self
     where
         F: Fn(&mut World) + Send + Sync + 'static,
     {
-        self.stages.get_mut(&stage).unwrap().push(Box::new(BoxedSystem {
-            name: name.into(),
-            func: Box::new(system),
-        }));
+        self.stages
+            .get_mut(&stage)
+            .unwrap()
+            .push(Box::new(BoxedSystem {
+                name: name.into(),
+                func: Box::new(system),
+            }));
         self
     }
 
@@ -206,10 +217,7 @@ impl SystemScheduler {
         Stage::all()
             .iter()
             .map(|stage| {
-                let names: Vec<&str> = self.stages[stage]
-                    .iter()
-                    .map(|s| s.name())
-                    .collect();
+                let names: Vec<&str> = self.stages[stage].iter().map(|s| s.name()).collect();
                 (stage, names)
             })
             .collect()
@@ -240,7 +248,8 @@ impl SystemSet {
     /// Add a system to this set
     pub fn add(mut self, stage: Stage, system: fn(&mut World)) -> Self {
         let name = format!("{}::{}", self.name, self.systems.len());
-        self.systems.push((stage, Box::new(FnSystem { name, func: system })));
+        self.systems
+            .push((stage, Box::new(FnSystem { name, func: system })));
         self
     }
 

@@ -1,8 +1,8 @@
 //! Play mode actions: start, stop, script updates.
 
+use super::EditorApp;
 #[cfg(feature = "scripting")]
 use crate::scripting::ObjectTransform;
-use super::EditorApp;
 
 impl EditorApp {
     /// Start play mode (opens game window)
@@ -73,7 +73,10 @@ impl EditorApp {
         self.sync_script_context();
 
         // Call _update on all scripts
-        if let Err(e) = self.script_runtime.call_update(&mut self.script_context, delta) {
+        if let Err(e) = self
+            .script_runtime
+            .call_update(&mut self.script_context, delta)
+        {
             log::error!("Script update failed: {}", e);
         }
 
@@ -92,7 +95,8 @@ impl EditorApp {
                 rotation: obj.rotation.to_array(),
                 scale: obj.scale.to_array(),
             };
-            self.script_context.register_object(obj.id, obj.name.clone(), transform, obj.visible);
+            self.script_context
+                .register_object(obj.id, obj.name.clone(), transform, obj.visible);
         }
     }
 

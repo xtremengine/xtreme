@@ -2,8 +2,8 @@
 //!
 //! TODO: Full navmesh implementation
 
-use glam::Vec3;
 use crate::core::Component;
+use glam::Vec3;
 
 /// Navigation mesh (placeholder)
 pub struct NavMesh {

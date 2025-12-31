@@ -2,8 +2,8 @@
 //!
 //! Provides ECS-like components for object hierarchy with transform propagation.
 
-use glam::{Mat4, Quat, Vec3, EulerRot};
-use serde::{Serialize, Deserialize};
+use glam::{EulerRot, Mat4, Quat, Vec3};
+use serde::{Deserialize, Serialize};
 
 /// Object ID type alias
 pub type ObjectId = u32;
@@ -71,7 +71,8 @@ pub mod helpers {
 
     /// Get all root objects (objects without a parent)
     pub fn get_root_objects<T: HasHierarchy>(objects: &[T]) -> Vec<ObjectId> {
-        objects.iter()
+        objects
+            .iter()
             .filter(|obj| obj.hierarchy().is_root())
             .map(|obj| obj.id())
             .collect()
@@ -84,7 +85,11 @@ pub mod helpers {
         result
     }
 
-    fn collect_descendants<T: HasHierarchy>(objects: &[T], parent_id: ObjectId, result: &mut Vec<ObjectId>) {
+    fn collect_descendants<T: HasHierarchy>(
+        objects: &[T],
+        parent_id: ObjectId,
+        result: &mut Vec<ObjectId>,
+    ) {
         if let Some(parent) = objects.iter().find(|o| o.id() == parent_id) {
             for &child_id in &parent.hierarchy().children {
                 result.push(child_id);
@@ -196,7 +201,8 @@ pub mod helpers {
         }
 
         // Get old parent id
-        let old_parent_id = objects.iter()
+        let old_parent_id = objects
+            .iter()
             .find(|o| o.id() == child_id)
             .and_then(|o| o.hierarchy().parent);
 

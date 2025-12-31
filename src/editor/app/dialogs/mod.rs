@@ -8,5 +8,5 @@
 
 mod file_dialog;
 mod prefab_dialog;
-mod script_dialog;
 mod project_dialog;
+mod script_dialog;

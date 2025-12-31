@@ -9,18 +9,18 @@
 //! - Input handling API
 
 #[cfg(feature = "scripting")]
-mod script;
+pub mod api;
 #[cfg(feature = "scripting")]
 mod runtime;
 #[cfg(feature = "scripting")]
-pub mod api;
+mod script;
 
 #[cfg(feature = "scripting")]
-pub use script::{Script, ScriptId, ScriptError};
+pub use api::{ObjectTransform, ScriptContext};
 #[cfg(feature = "scripting")]
 pub use runtime::ScriptRuntime;
 #[cfg(feature = "scripting")]
-pub use api::{ScriptContext, ObjectTransform};
+pub use script::{Script, ScriptError, ScriptId};
 
 /// Check if scripting feature is enabled
 pub fn is_scripting_enabled() -> bool {

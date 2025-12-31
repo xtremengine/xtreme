@@ -1,8 +1,8 @@
 //! # A* Pathfinding
 
-use std::collections::{BinaryHeap, HashMap};
-use std::cmp::Ordering;
 use glam::Vec3;
+use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
 
 /// Grid node for pathfinding
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -97,7 +97,10 @@ pub struct Path {
 
 impl Path {
     pub fn empty() -> Self {
-        Self { nodes: Vec::new(), cost: 0.0 }
+        Self {
+            nodes: Vec::new(),
+            cost: 0.0,
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -126,7 +129,10 @@ impl Eq for AStarNode {}
 
 impl Ord for AStarNode {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.f_score.partial_cmp(&self.f_score).unwrap_or(Ordering::Equal)
+        other
+            .f_score
+            .partial_cmp(&self.f_score)
+            .unwrap_or(Ordering::Equal)
     }
 }
 

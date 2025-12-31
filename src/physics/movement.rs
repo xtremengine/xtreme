@@ -1,7 +1,7 @@
 //! # Movement and Physics Integration
 
-use glam::Vec3;
 use crate::core::Component;
+use glam::Vec3;
 
 /// Velocity component
 #[derive(Clone, Copy, Debug, Default)]

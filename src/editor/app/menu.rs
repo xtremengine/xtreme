@@ -2,12 +2,12 @@
 
 use glam::Vec3;
 
-use crate::render::IsometricCamera;
+use super::state::FileDialogAction;
+use super::ui::rand_float;
+use super::EditorApp;
 use crate::editor::selection::SceneObject;
 use crate::editor::shortcuts::EditorAction;
-use super::state::FileDialogAction;
-use super::EditorApp;
-use super::ui::rand_float;
+use crate::render::IsometricCamera;
 
 impl EditorApp {
     /// Draw the main menu bar
@@ -25,13 +25,19 @@ impl EditorApp {
     fn draw_file_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("File", |ui| {
             let new_shortcut = self.shortcuts.get_shortcut_text(EditorAction::NewScene);
-            if ui.add(egui::Button::new("New Scene").shortcut_text(&new_shortcut)).clicked() {
+            if ui
+                .add(egui::Button::new("New Scene").shortcut_text(&new_shortcut))
+                .clicked()
+            {
                 self.new_scene();
                 ui.close();
             }
 
             let open_shortcut = self.shortcuts.get_shortcut_text(EditorAction::OpenScene);
-            if ui.add(egui::Button::new("Open...").shortcut_text(&open_shortcut)).clicked() {
+            if ui
+                .add(egui::Button::new("Open...").shortcut_text(&open_shortcut))
+                .clicked()
+            {
                 self.file_dialog_action = Some(FileDialogAction::Open);
                 ui.close();
             }
@@ -40,7 +46,13 @@ impl EditorApp {
 
             let save_shortcut = self.shortcuts.get_shortcut_text(EditorAction::SaveScene);
             let can_save = self.scene_manager.current_path().is_some();
-            if ui.add_enabled(can_save, egui::Button::new("Save").shortcut_text(&save_shortcut)).clicked() {
+            if ui
+                .add_enabled(
+                    can_save,
+                    egui::Button::new("Save").shortcut_text(&save_shortcut),
+                )
+                .clicked()
+            {
                 if let Some(path) = self.scene_manager.current_path() {
                     self.save_scene(path.to_path_buf());
                 }
@@ -48,7 +60,10 @@ impl EditorApp {
             }
 
             let save_as_shortcut = self.shortcuts.get_shortcut_text(EditorAction::SaveSceneAs);
-            if ui.add(egui::Button::new("Save As...").shortcut_text(&save_as_shortcut)).clicked() {
+            if ui
+                .add(egui::Button::new("Save As...").shortcut_text(&save_as_shortcut))
+                .clicked()
+            {
                 self.file_dialog_action = Some(FileDialogAction::SaveAs);
                 ui.close();
             }
@@ -72,7 +87,8 @@ impl EditorApp {
                     .set_title("Select Project Location")
                     .pick_folder()
                 {
-                    let name = folder.file_name()
+                    let name = folder
+                        .file_name()
                         .and_then(|n| n.to_str())
                         .unwrap_or("New Project")
                         .to_string();
@@ -134,7 +150,10 @@ impl EditorApp {
 
             let has_project = self.current_project.is_some();
             let mut save_project = false;
-            if ui.add_enabled(has_project, egui::Button::new("Save Project")).clicked() {
+            if ui
+                .add_enabled(has_project, egui::Button::new("Save Project"))
+                .clicked()
+            {
                 save_project = true;
                 ui.close();
             }
@@ -153,7 +172,10 @@ impl EditorApp {
                 }
             }
 
-            if ui.add_enabled(has_project, egui::Button::new("Properties...")).clicked() {
+            if ui
+                .add_enabled(has_project, egui::Button::new("Properties..."))
+                .clicked()
+            {
                 self.show_project_dialog = true;
                 ui.close();
             }
@@ -168,10 +190,13 @@ impl EditorApp {
             } else {
                 "Undo".to_string()
             };
-            if ui.add_enabled(
-                self.command_history.can_undo(),
-                egui::Button::new(&undo_label).shortcut_text(&undo_shortcut)
-            ).clicked() {
+            if ui
+                .add_enabled(
+                    self.command_history.can_undo(),
+                    egui::Button::new(&undo_label).shortcut_text(&undo_shortcut),
+                )
+                .clicked()
+            {
                 self.undo();
                 ui.close();
             }
@@ -182,10 +207,13 @@ impl EditorApp {
             } else {
                 "Redo".to_string()
             };
-            if ui.add_enabled(
-                self.command_history.can_redo(),
-                egui::Button::new(&redo_label).shortcut_text(&redo_shortcut)
-            ).clicked() {
+            if ui
+                .add_enabled(
+                    self.command_history.can_redo(),
+                    egui::Button::new(&redo_label).shortcut_text(&redo_shortcut),
+                )
+                .clicked()
+            {
                 self.redo();
                 ui.close();
             }
@@ -193,28 +221,37 @@ impl EditorApp {
             ui.separator();
 
             let cut_shortcut = self.shortcuts.get_shortcut_text(EditorAction::Cut);
-            if ui.add_enabled(
-                !self.selection.is_empty(),
-                egui::Button::new("Cut").shortcut_text(&cut_shortcut)
-            ).clicked() {
+            if ui
+                .add_enabled(
+                    !self.selection.is_empty(),
+                    egui::Button::new("Cut").shortcut_text(&cut_shortcut),
+                )
+                .clicked()
+            {
                 self.cut_selected();
                 ui.close();
             }
 
             let copy_shortcut = self.shortcuts.get_shortcut_text(EditorAction::Copy);
-            if ui.add_enabled(
-                !self.selection.is_empty(),
-                egui::Button::new("Copy").shortcut_text(&copy_shortcut)
-            ).clicked() {
+            if ui
+                .add_enabled(
+                    !self.selection.is_empty(),
+                    egui::Button::new("Copy").shortcut_text(&copy_shortcut),
+                )
+                .clicked()
+            {
                 self.copy_selected();
                 ui.close();
             }
 
             let paste_shortcut = self.shortcuts.get_shortcut_text(EditorAction::Paste);
-            if ui.add_enabled(
-                self.has_clipboard(),
-                egui::Button::new("Paste").shortcut_text(&paste_shortcut)
-            ).clicked() {
+            if ui
+                .add_enabled(
+                    self.has_clipboard(),
+                    egui::Button::new("Paste").shortcut_text(&paste_shortcut),
+                )
+                .clicked()
+            {
                 self.paste();
                 ui.close();
             }
@@ -222,10 +259,13 @@ impl EditorApp {
             ui.separator();
 
             let delete_shortcut = self.shortcuts.get_shortcut_text(EditorAction::Delete);
-            if ui.add_enabled(
-                !self.selection.is_empty(),
-                egui::Button::new("Delete Selected").shortcut_text(&delete_shortcut)
-            ).clicked() {
+            if ui
+                .add_enabled(
+                    !self.selection.is_empty(),
+                    egui::Button::new("Delete Selected").shortcut_text(&delete_shortcut),
+                )
+                .clicked()
+            {
                 let ids: Vec<u32> = self.selection.all().to_vec();
                 for id in ids {
                     self.delete_object(id);
@@ -234,10 +274,13 @@ impl EditorApp {
             }
 
             let duplicate_shortcut = self.shortcuts.get_shortcut_text(EditorAction::Duplicate);
-            if ui.add_enabled(
-                self.selection.first().is_some(),
-                egui::Button::new("Duplicate Selected").shortcut_text(&duplicate_shortcut)
-            ).clicked() {
+            if ui
+                .add_enabled(
+                    self.selection.first().is_some(),
+                    egui::Button::new("Duplicate Selected").shortcut_text(&duplicate_shortcut),
+                )
+                .clicked()
+            {
                 if let Some(id) = self.selection.first() {
                     self.duplicate_object(id);
                 }
@@ -285,8 +328,12 @@ impl EditorApp {
                     match crate::editor::mesh::load_obj(&path) {
                         Ok(meshes) => {
                             for mesh in meshes {
-                                log::info!("Imported mesh '{}': {} vertices, {} triangles",
-                                    mesh.name, mesh.vertex_count(), mesh.triangle_count());
+                                log::info!(
+                                    "Imported mesh '{}': {} vertices, {} triangles",
+                                    mesh.name,
+                                    mesh.vertex_count(),
+                                    mesh.triangle_count()
+                                );
 
                                 let center = mesh.center();
                                 let mut obj = SceneObject::cube(self.next_id, center);
@@ -312,10 +359,13 @@ impl EditorApp {
 
     fn draw_prefab_submenu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("Prefab", |ui| {
-            if ui.add_enabled(
-                !self.selection.is_empty(),
-                egui::Button::new("Create from Selection...")
-            ).clicked() {
+            if ui
+                .add_enabled(
+                    !self.selection.is_empty(),
+                    egui::Button::new("Create from Selection..."),
+                )
+                .clicked()
+            {
                 self.prefab_name_input = format!("Prefab {}", self.prefabs.len() + 1);
                 self.show_prefab_dialog = true;
                 ui.close();
@@ -326,7 +376,9 @@ impl EditorApp {
             if self.prefabs.is_empty() {
                 ui.label("(No prefabs)");
             } else {
-                let prefab_info: Vec<(usize, String, usize)> = self.prefabs.iter()
+                let prefab_info: Vec<(usize, String, usize)> = self
+                    .prefabs
+                    .iter()
                     .enumerate()
                     .map(|(i, p)| (i, p.name.clone(), p.object_count()))
                     .collect();

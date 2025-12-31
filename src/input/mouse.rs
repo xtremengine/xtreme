@@ -12,21 +12,13 @@ pub enum MouseButton {
 }
 
 /// Mouse state
+#[derive(Default)]
 pub struct MouseState {
     pub pressed: [bool; 5],
     pub just_pressed: [bool; 5],
     pub just_released: [bool; 5],
 }
 
-impl Default for MouseState {
-    fn default() -> Self {
-        Self {
-            pressed: [false; 5],
-            just_pressed: [false; 5],
-            just_released: [false; 5],
-        }
-    }
-}
 
 /// Mouse tracker
 pub struct Mouse {

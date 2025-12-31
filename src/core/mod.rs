@@ -29,16 +29,16 @@
 //! }
 //! ```
 
-mod entity;
-mod component;
 mod archetype;
-mod world;
+mod component;
+mod entity;
 mod query;
 mod system;
+mod world;
 
-pub use entity::{Entity, EntityId, Generation};
-pub use component::{Component, ComponentStorage, SparseSet};
 pub use archetype::{Archetype, ArchetypeId};
-pub use world::World;
+pub use component::{Component, ComponentStorage, SparseSet};
+pub use entity::{Entity, EntityId, Generation};
 pub use query::{Query, QueryIter};
-pub use system::{System, SystemScheduler, Stage};
+pub use system::{Stage, System, SystemScheduler};
+pub use world::World;

@@ -1,7 +1,7 @@
 //! Project management - save/load complete projects.
 
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use serde::{Serialize, Deserialize};
 
 /// Project metadata
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -81,8 +81,7 @@ impl ProjectConfig {
         let contents = std::fs::read_to_string(path)
             .map_err(|e| format!("Failed to read project config: {}", e))?;
 
-        ron::from_str(&contents)
-            .map_err(|e| format!("Failed to parse project config: {}", e))
+        ron::from_str(&contents).map_err(|e| format!("Failed to parse project config: {}", e))
     }
 
     /// Save to file
@@ -90,8 +89,7 @@ impl ProjectConfig {
         let contents = ron::ser::to_string_pretty(self, ron::ser::PrettyConfig::default())
             .map_err(|e| format!("Failed to serialize project config: {}", e))?;
 
-        std::fs::write(path, contents)
-            .map_err(|e| format!("Failed to write project config: {}", e))
+        std::fs::write(path, contents).map_err(|e| format!("Failed to write project config: {}", e))
     }
 }
 

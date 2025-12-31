@@ -1,8 +1,8 @@
 //! # Raycasting
 
-use glam::Vec3;
-use crate::core::Entity;
 use super::shapes::AABB;
+use crate::core::Entity;
+use glam::Vec3;
 
 /// Ray for casting
 #[derive(Clone, Copy, Debug)]
@@ -87,5 +87,9 @@ pub fn ray_vs_plane(ray: &Ray, plane_normal: Vec3, plane_d: f32) -> Option<f32> 
     }
 
     let t = -(ray.origin.dot(plane_normal) + plane_d) / denom;
-    if t >= 0.0 { Some(t) } else { None }
+    if t >= 0.0 {
+        Some(t)
+    } else {
+        None
+    }
 }

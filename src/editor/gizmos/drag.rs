@@ -2,10 +2,10 @@
 
 use glam::Vec3;
 
-use crate::editor::selection::Ray;
-use super::types::{GizmoAxis, GizmoMode, GizmoDelta};
 use super::math::ray_plane_intersection;
+use super::types::{GizmoAxis, GizmoDelta, GizmoMode};
 use super::Gizmo;
+use crate::editor::selection::Ray;
 
 impl Gizmo {
     /// Begin dragging on an axis
@@ -22,7 +22,8 @@ impl Gizmo {
         self.drag_accumulated = Vec3::ZERO;
 
         // Calculate drag start point based on axis
-        self.drag_start_world = self.project_ray_to_axis(ray, gizmo_position, axis)
+        self.drag_start_world = self
+            .project_ray_to_axis(ray, gizmo_position, axis)
             .unwrap_or(gizmo_position);
     }
 
@@ -50,7 +51,11 @@ impl Gizmo {
                 }
             }
             GizmoMode::Rotate => {
-                let rotation = self.calculate_rotation_delta(gizmo_position, self.drag_start_world, current_world);
+                let rotation = self.calculate_rotation_delta(
+                    gizmo_position,
+                    self.drag_start_world,
+                    current_world,
+                );
                 GizmoDelta {
                     translation: Vec3::ZERO,
                     rotation,

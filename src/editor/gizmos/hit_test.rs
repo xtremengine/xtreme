@@ -2,10 +2,10 @@
 
 use glam::Vec3;
 
-use crate::editor::selection::Ray;
+use super::math::{ray_line_distance, ray_plane_intersection};
 use super::types::{GizmoAxis, GizmoMode};
-use super::math::{ray_plane_intersection, ray_line_distance};
 use super::Gizmo;
+use crate::editor::selection::Ray;
 
 impl Gizmo {
     /// Hit test against gizmo axes
@@ -27,37 +27,61 @@ impl Gizmo {
 
         // Test plane handles first (they're in front)
         // XY plane
-        let xy_center = pos + Vec3::new(plane_offset + plane_size * 0.5, plane_offset + plane_size * 0.5, 0.0);
+        let xy_center = pos
+            + Vec3::new(
+                plane_offset + plane_size * 0.5,
+                plane_offset + plane_size * 0.5,
+                0.0,
+            );
         if let Some(t) = ray_plane_intersection(ray, xy_center, Vec3::Z) {
             let hit = ray.origin + ray.direction * t;
             let local = hit - pos;
-            if local.x > plane_offset && local.x < plane_offset + plane_size &&
-               local.y > plane_offset && local.y < plane_offset + plane_size &&
-               local.z.abs() < threshold {
+            if local.x > plane_offset
+                && local.x < plane_offset + plane_size
+                && local.y > plane_offset
+                && local.y < plane_offset + plane_size
+                && local.z.abs() < threshold
+            {
                 return GizmoAxis::XY;
             }
         }
 
         // XZ plane
-        let xz_center = pos + Vec3::new(plane_offset + plane_size * 0.5, 0.0, plane_offset + plane_size * 0.5);
+        let xz_center = pos
+            + Vec3::new(
+                plane_offset + plane_size * 0.5,
+                0.0,
+                plane_offset + plane_size * 0.5,
+            );
         if let Some(t) = ray_plane_intersection(ray, xz_center, Vec3::Y) {
             let hit = ray.origin + ray.direction * t;
             let local = hit - pos;
-            if local.x > plane_offset && local.x < plane_offset + plane_size &&
-               local.z > plane_offset && local.z < plane_offset + plane_size &&
-               local.y.abs() < threshold {
+            if local.x > plane_offset
+                && local.x < plane_offset + plane_size
+                && local.z > plane_offset
+                && local.z < plane_offset + plane_size
+                && local.y.abs() < threshold
+            {
                 return GizmoAxis::XZ;
             }
         }
 
         // YZ plane
-        let yz_center = pos + Vec3::new(0.0, plane_offset + plane_size * 0.5, plane_offset + plane_size * 0.5);
+        let yz_center = pos
+            + Vec3::new(
+                0.0,
+                plane_offset + plane_size * 0.5,
+                plane_offset + plane_size * 0.5,
+            );
         if let Some(t) = ray_plane_intersection(ray, yz_center, Vec3::X) {
             let hit = ray.origin + ray.direction * t;
             let local = hit - pos;
-            if local.y > plane_offset && local.y < plane_offset + plane_size &&
-               local.z > plane_offset && local.z < plane_offset + plane_size &&
-               local.x.abs() < threshold {
+            if local.y > plane_offset
+                && local.y < plane_offset + plane_size
+                && local.z > plane_offset
+                && local.z < plane_offset + plane_size
+                && local.x.abs() < threshold
+            {
                 return GizmoAxis::YZ;
             }
         }
@@ -129,27 +153,39 @@ impl Gizmo {
 
         // Test center cube first
         let center_half = center_size * 0.5;
-        if ray.intersect_aabb(
-            pos - Vec3::splat(center_half),
-            pos + Vec3::splat(center_half),
-        ).is_some() {
+        if ray
+            .intersect_aabb(
+                pos - Vec3::splat(center_half),
+                pos + Vec3::splat(center_half),
+            )
+            .is_some()
+        {
             return GizmoAxis::XYZ;
         }
 
         // Test axis cubes
         let end_x = pos + Vec3::X * length;
         let half = cube_size * 0.5;
-        if ray.intersect_aabb(end_x - Vec3::splat(half), end_x + Vec3::splat(half)).is_some() {
+        if ray
+            .intersect_aabb(end_x - Vec3::splat(half), end_x + Vec3::splat(half))
+            .is_some()
+        {
             return GizmoAxis::X;
         }
 
         let end_y = pos + Vec3::Y * length;
-        if ray.intersect_aabb(end_y - Vec3::splat(half), end_y + Vec3::splat(half)).is_some() {
+        if ray
+            .intersect_aabb(end_y - Vec3::splat(half), end_y + Vec3::splat(half))
+            .is_some()
+        {
             return GizmoAxis::Y;
         }
 
         let end_z = pos + Vec3::Z * length;
-        if ray.intersect_aabb(end_z - Vec3::splat(half), end_z + Vec3::splat(half)).is_some() {
+        if ray
+            .intersect_aabb(end_z - Vec3::splat(half), end_z + Vec3::splat(half))
+            .is_some()
+        {
             return GizmoAxis::Z;
         }
 

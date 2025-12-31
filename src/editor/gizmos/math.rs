@@ -1,7 +1,7 @@
 //! Math helper functions for gizmo calculations.
 
-use glam::Vec3;
 use crate::editor::selection::Ray;
+use glam::Vec3;
 
 /// Ray-plane intersection, returns t parameter
 pub fn ray_plane_intersection(ray: &Ray, plane_point: Vec3, plane_normal: Vec3) -> Option<f32> {

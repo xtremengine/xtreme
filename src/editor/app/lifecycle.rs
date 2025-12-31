@@ -1,20 +1,20 @@
 //! App trait implementation: init, events, update, render.
 
+use glam::{Mat4, Vec3};
 use std::sync::Arc;
-use glam::{Vec3, Mat4};
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window as WinitWindow, WindowId};
 
-use crate::render::{App, AppEvent, RenderContext, IsometricCamera, EguiIntegration};
-use crate::editor::viewport::Viewport;
-use crate::editor::selection::SceneObject;
-use crate::editor::panels::Tool;
-use crate::editor::gizmos::GizmoMode;
-use crate::editor::shortcuts::EditorAction;
-use crate::editor::game_window::{GameWindow, GameSettings};
 use super::state::FileDialogAction;
 use super::EditorApp;
+use crate::editor::game_window::{GameSettings, GameWindow};
+use crate::editor::gizmos::GizmoMode;
+use crate::editor::panels::Tool;
+use crate::editor::selection::SceneObject;
+use crate::editor::shortcuts::EditorAction;
+use crate::editor::viewport::Viewport;
+use crate::render::{App, AppEvent, EguiIntegration, IsometricCamera, RenderContext};
 
 impl EditorApp {
     /// Get model matrices and colors for rendering (uses world transforms)
@@ -120,9 +120,19 @@ impl App for EditorApp {
         self.draw_ui(&mut viewport_size);
 
         // Resize viewport if needed
-        if viewport_size != self.last_viewport_size && viewport_size.0 > 0.0 && viewport_size.1 > 0.0 {
-            if let (Some(ctx), Some(egui), Some(viewport)) = (&self.ctx, &mut self.egui, &mut self.viewport) {
-                viewport.resize(ctx, egui.renderer_mut(), viewport_size.0 as u32, viewport_size.1 as u32);
+        if viewport_size != self.last_viewport_size
+            && viewport_size.0 > 0.0
+            && viewport_size.1 > 0.0
+        {
+            if let (Some(ctx), Some(egui), Some(viewport)) =
+                (&self.ctx, &mut self.egui, &mut self.viewport)
+            {
+                viewport.resize(
+                    ctx,
+                    egui.renderer_mut(),
+                    viewport_size.0 as u32,
+                    viewport_size.1 as u32,
+                );
                 self.camera.aspect_ratio = viewport_size.0 / viewport_size.1;
             }
             self.last_viewport_size = viewport_size;
@@ -160,7 +170,13 @@ impl App for EditorApp {
                     if let Some(obj) = self.scene_objects.iter().find(|o| o.id == id) {
                         // Use world position for gizmo
                         let world_pos = obj.world_position(&self.scene_objects);
-                        viewport.render_gizmo(ctx, &mut encoder, &self.camera, &self.gizmo, world_pos);
+                        viewport.render_gizmo(
+                            ctx,
+                            &mut encoder,
+                            &self.camera,
+                            &self.gizmo,
+                            world_pos,
+                        );
                     }
                 }
             }
@@ -253,7 +269,12 @@ impl App for EditorApp {
                                 rotation: obj.rotation.to_array(),
                                 scale: obj.scale.to_array(),
                             };
-                            self.script_context.register_object(obj.id, obj.name.clone(), transform, obj.visible);
+                            self.script_context.register_object(
+                                obj.id,
+                                obj.name.clone(),
+                                transform,
+                                obj.visible,
+                            );
                         }
 
                         // Call _ready on all scripts
@@ -312,27 +333,47 @@ impl App for EditorApp {
                                     rotation: obj.rotation.to_array(),
                                     scale: obj.scale.to_array(),
                                 };
-                                self.script_context.register_object(obj.id, obj.name.clone(), transform, obj.visible);
+                                self.script_context.register_object(
+                                    obj.id,
+                                    obj.name.clone(),
+                                    transform,
+                                    obj.visible,
+                                );
                             }
 
                             // Call _update on all scripts
-                            if let Err(e) = self.script_runtime.call_update(&mut self.script_context, delta) {
+                            if let Err(e) = self
+                                .script_runtime
+                                .call_update(&mut self.script_context, delta)
+                            {
                                 log::error!("Script update failed: {}", e);
                             }
 
                             // Apply script changes back to game window objects
                             for (id, new_pos) in self.script_context.drain_position_changes() {
-                                if let Some(obj) = game_window.scene_objects_mut().iter_mut().find(|o| o.id == id) {
+                                if let Some(obj) = game_window
+                                    .scene_objects_mut()
+                                    .iter_mut()
+                                    .find(|o| o.id == id)
+                                {
                                     obj.position = glam::Vec3::from_array(new_pos);
                                 }
                             }
                             for (id, new_rot) in self.script_context.drain_rotation_changes() {
-                                if let Some(obj) = game_window.scene_objects_mut().iter_mut().find(|o| o.id == id) {
+                                if let Some(obj) = game_window
+                                    .scene_objects_mut()
+                                    .iter_mut()
+                                    .find(|o| o.id == id)
+                                {
                                     obj.rotation = glam::Vec3::from_array(new_rot);
                                 }
                             }
                             for (id, new_scale) in self.script_context.drain_scale_changes() {
-                                if let Some(obj) = game_window.scene_objects_mut().iter_mut().find(|o| o.id == id) {
+                                if let Some(obj) = game_window
+                                    .scene_objects_mut()
+                                    .iter_mut()
+                                    .find(|o| o.id == id)
+                                {
                                     obj.scale = glam::Vec3::from_array(new_scale);
                                 }
                             }
@@ -350,7 +391,9 @@ impl App for EditorApp {
                     WindowEvent::KeyboardInput { event, .. } => {
                         // ESC closes game window
                         if event.state == winit::event::ElementState::Pressed {
-                            if let winit::keyboard::Key::Named(winit::keyboard::NamedKey::Escape) = event.logical_key {
+                            if let winit::keyboard::Key::Named(winit::keyboard::NamedKey::Escape) =
+                                event.logical_key
+                            {
                                 self.stop_play_and_close_game_window();
                                 return true;
                             }

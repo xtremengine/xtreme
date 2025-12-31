@@ -1,9 +1,9 @@
 //! # Spatial Partitioning
 
+use super::shapes::AABB;
+use crate::core::Entity;
 use glam::Vec3;
 use std::collections::HashMap;
-use crate::core::Entity;
-use super::shapes::AABB;
 
 /// Grid cell identifier
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

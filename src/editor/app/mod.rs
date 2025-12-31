@@ -12,19 +12,19 @@
 //! - `splash.rs` - Splash screen
 //! - `lifecycle.rs` - App trait implementation
 
-mod state;
 mod actions;
-mod object_actions;
-mod history;
-mod scene_io;
 mod clipboard;
-mod prefab_actions;
-mod play_mode;
-mod input;
-mod ui;
-mod menu;
 mod dialogs;
-mod splash;
+mod history;
+mod input;
 mod lifecycle;
+mod menu;
+mod object_actions;
+mod play_mode;
+mod prefab_actions;
+mod scene_io;
+mod splash;
+mod state;
+mod ui;
 
 pub use state::EditorApp;

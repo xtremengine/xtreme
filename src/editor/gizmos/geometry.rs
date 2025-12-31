@@ -3,12 +3,16 @@
 use glam::Vec3;
 use std::f32::consts::PI;
 
-use super::types::{GizmoAxis, GizmoMode, GizmoVertex, colors};
+use super::types::{colors, GizmoAxis, GizmoMode, GizmoVertex};
 use super::Gizmo;
 
 impl Gizmo {
     /// Generate vertices for the gizmo at a given position and scale
-    pub fn generate_vertices(&self, position: Vec3, scale: f32) -> (Vec<GizmoVertex>, Vec<GizmoVertex>) {
+    pub fn generate_vertices(
+        &self,
+        position: Vec3,
+        scale: f32,
+    ) -> (Vec<GizmoVertex>, Vec<GizmoVertex>) {
         let mut lines = Vec::new();
         let mut triangles = Vec::new();
 
@@ -48,17 +52,35 @@ impl Gizmo {
         // X axis line and arrow
         lines.push(GizmoVertex::new(pos, x_color));
         lines.push(GizmoVertex::new(pos + Vec3::X * length, x_color));
-        self.add_arrow_head(triangles, pos + Vec3::X * length, Vec3::X, arrow_size, x_color);
+        self.add_arrow_head(
+            triangles,
+            pos + Vec3::X * length,
+            Vec3::X,
+            arrow_size,
+            x_color,
+        );
 
         // Y axis line and arrow
         lines.push(GizmoVertex::new(pos, y_color));
         lines.push(GizmoVertex::new(pos + Vec3::Y * length, y_color));
-        self.add_arrow_head(triangles, pos + Vec3::Y * length, Vec3::Y, arrow_size, y_color);
+        self.add_arrow_head(
+            triangles,
+            pos + Vec3::Y * length,
+            Vec3::Y,
+            arrow_size,
+            y_color,
+        );
 
         // Z axis line and arrow
         lines.push(GizmoVertex::new(pos, z_color));
         lines.push(GizmoVertex::new(pos + Vec3::Z * length, z_color));
-        self.add_arrow_head(triangles, pos + Vec3::Z * length, Vec3::Z, arrow_size, z_color);
+        self.add_arrow_head(
+            triangles,
+            pos + Vec3::Z * length,
+            Vec3::Z,
+            arrow_size,
+            z_color,
+        );
 
         // Plane handles (small squares)
         let xy_color = self.get_axis_color(GizmoAxis::XY);
@@ -69,32 +91,55 @@ impl Gizmo {
         let xy_base = pos + Vec3::new(plane_offset, plane_offset, 0.0);
         triangles.push(GizmoVertex::new(xy_base, xy_color));
         triangles.push(GizmoVertex::new(xy_base + Vec3::X * plane_size, xy_color));
-        triangles.push(GizmoVertex::new(xy_base + Vec3::new(plane_size, plane_size, 0.0), xy_color));
+        triangles.push(GizmoVertex::new(
+            xy_base + Vec3::new(plane_size, plane_size, 0.0),
+            xy_color,
+        ));
         triangles.push(GizmoVertex::new(xy_base, xy_color));
-        triangles.push(GizmoVertex::new(xy_base + Vec3::new(plane_size, plane_size, 0.0), xy_color));
+        triangles.push(GizmoVertex::new(
+            xy_base + Vec3::new(plane_size, plane_size, 0.0),
+            xy_color,
+        ));
         triangles.push(GizmoVertex::new(xy_base + Vec3::Y * plane_size, xy_color));
 
         // XZ plane
         let xz_base = pos + Vec3::new(plane_offset, 0.0, plane_offset);
         triangles.push(GizmoVertex::new(xz_base, xz_color));
         triangles.push(GizmoVertex::new(xz_base + Vec3::X * plane_size, xz_color));
-        triangles.push(GizmoVertex::new(xz_base + Vec3::new(plane_size, 0.0, plane_size), xz_color));
+        triangles.push(GizmoVertex::new(
+            xz_base + Vec3::new(plane_size, 0.0, plane_size),
+            xz_color,
+        ));
         triangles.push(GizmoVertex::new(xz_base, xz_color));
-        triangles.push(GizmoVertex::new(xz_base + Vec3::new(plane_size, 0.0, plane_size), xz_color));
+        triangles.push(GizmoVertex::new(
+            xz_base + Vec3::new(plane_size, 0.0, plane_size),
+            xz_color,
+        ));
         triangles.push(GizmoVertex::new(xz_base + Vec3::Z * plane_size, xz_color));
 
         // YZ plane
         let yz_base = pos + Vec3::new(0.0, plane_offset, plane_offset);
         triangles.push(GizmoVertex::new(yz_base, yz_color));
         triangles.push(GizmoVertex::new(yz_base + Vec3::Y * plane_size, yz_color));
-        triangles.push(GizmoVertex::new(yz_base + Vec3::new(0.0, plane_size, plane_size), yz_color));
+        triangles.push(GizmoVertex::new(
+            yz_base + Vec3::new(0.0, plane_size, plane_size),
+            yz_color,
+        ));
         triangles.push(GizmoVertex::new(yz_base, yz_color));
-        triangles.push(GizmoVertex::new(yz_base + Vec3::new(0.0, plane_size, plane_size), yz_color));
+        triangles.push(GizmoVertex::new(
+            yz_base + Vec3::new(0.0, plane_size, plane_size),
+            yz_color,
+        ));
         triangles.push(GizmoVertex::new(yz_base + Vec3::Z * plane_size, yz_color));
     }
 
     /// Generate rotate gizmo (rings)
-    pub(super) fn generate_rotate_gizmo(&self, lines: &mut Vec<GizmoVertex>, pos: Vec3, scale: f32) {
+    pub(super) fn generate_rotate_gizmo(
+        &self,
+        lines: &mut Vec<GizmoVertex>,
+        pos: Vec3,
+        scale: f32,
+    ) {
         let radius = scale * 1.2;
         let segments = 48;
 
@@ -209,7 +254,13 @@ impl Gizmo {
     }
 
     /// Add a small cube
-    pub(super) fn add_cube(&self, triangles: &mut Vec<GizmoVertex>, center: Vec3, size: f32, color: [f32; 4]) {
+    pub(super) fn add_cube(
+        &self,
+        triangles: &mut Vec<GizmoVertex>,
+        center: Vec3,
+        size: f32,
+        color: [f32; 4],
+    ) {
         let half = size * 0.5;
 
         // Define the 8 corners

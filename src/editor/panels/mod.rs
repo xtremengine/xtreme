@@ -2,13 +2,13 @@
 //!
 //! UI panels for the editor.
 
-pub mod hierarchy;
-pub mod toolbar;
-pub mod inspector;
 pub mod asset_browser;
+pub mod hierarchy;
+pub mod inspector;
+pub mod toolbar;
 
-pub use hierarchy::{HierarchyPanel, HierarchyAction};
-pub use toolbar::{ToolbarPanel, ToolbarAction, Tool};
-pub use inspector::InspectorPanel;
 #[allow(unused_imports)]
-pub use asset_browser::{AssetBrowser, AssetAction, AssetEntry, AssetType};
+pub use asset_browser::{AssetAction, AssetBrowser, AssetEntry, AssetType};
+pub use hierarchy::{HierarchyAction, HierarchyPanel};
+pub use inspector::InspectorPanel;
+pub use toolbar::{Tool, ToolbarAction, ToolbarPanel};

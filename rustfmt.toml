@@ -6,27 +6,9 @@ use_small_heuristics = "Default"
 newline_style = "Auto"
 
 # Imports
-imports_granularity = "Module"
-group_imports = "StdExternalCrate"
 reorder_imports = true
 reorder_modules = true
 
-# Comments
-wrap_comments = true
-comment_width = 100
-normalize_comments = true
-
-# Functions
-fn_args_layout = "Tall"
-fn_single_line = false
-
-# Structs
-struct_lit_single_line = true
-struct_field_align_threshold = 0
-
 # Other
-force_multiline_blocks = false
-format_code_in_doc_comments = true
-format_strings = false
 use_field_init_shorthand = true
 use_try_shorthand = true

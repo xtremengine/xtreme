@@ -1,7 +1,7 @@
 //! Mesh loading and management for 3D models.
 
-use std::path::Path;
 use glam::Vec3;
+use std::path::Path;
 
 /// A loaded mesh with vertices and indices
 #[derive(Clone, Debug)]
@@ -52,8 +52,8 @@ pub fn load_obj(path: &Path) -> Result<Vec<LoadedMesh>, String> {
         ..Default::default()
     };
 
-    let (models, _materials) = tobj::load_obj(path, &load_options)
-        .map_err(|e| format!("Failed to load OBJ: {}", e))?;
+    let (models, _materials) =
+        tobj::load_obj(path, &load_options).map_err(|e| format!("Failed to load OBJ: {}", e))?;
 
     let mut meshes = Vec::new();
 
@@ -119,9 +119,21 @@ fn generate_flat_normals(positions: &[f32], indices: &[u32]) -> Vec<f32> {
         let i1 = indices[i + 1] as usize;
         let i2 = indices[i + 2] as usize;
 
-        let v0 = Vec3::new(positions[i0 * 3], positions[i0 * 3 + 1], positions[i0 * 3 + 2]);
-        let v1 = Vec3::new(positions[i1 * 3], positions[i1 * 3 + 1], positions[i1 * 3 + 2]);
-        let v2 = Vec3::new(positions[i2 * 3], positions[i2 * 3 + 1], positions[i2 * 3 + 2]);
+        let v0 = Vec3::new(
+            positions[i0 * 3],
+            positions[i0 * 3 + 1],
+            positions[i0 * 3 + 2],
+        );
+        let v1 = Vec3::new(
+            positions[i1 * 3],
+            positions[i1 * 3 + 1],
+            positions[i1 * 3 + 2],
+        );
+        let v2 = Vec3::new(
+            positions[i2 * 3],
+            positions[i2 * 3 + 1],
+            positions[i2 * 3 + 2],
+        );
 
         let normal = (v1 - v0).cross(v2 - v0).normalize_or_zero();
 
@@ -136,7 +148,9 @@ fn generate_flat_normals(positions: &[f32], indices: &[u32]) -> Vec<f32> {
     // Normalize accumulated normals
     for i in 0..vertex_count {
         if counts[i] > 0 {
-            let len = (normals[i * 3].powi(2) + normals[i * 3 + 1].powi(2) + normals[i * 3 + 2].powi(2)).sqrt();
+            let len =
+                (normals[i * 3].powi(2) + normals[i * 3 + 1].powi(2) + normals[i * 3 + 2].powi(2))
+                    .sqrt();
             if len > 0.0 {
                 normals[i * 3] /= len;
                 normals[i * 3 + 1] /= len;

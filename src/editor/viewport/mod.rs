@@ -7,19 +7,19 @@
 //! - `textures.rs` - Texture creation helpers
 //! - `render.rs` - Rendering methods
 
-mod types;
-mod textures;
 mod render;
+mod textures;
+mod types;
 
 #[allow(unused_imports)]
-pub use types::{GridUniforms, GizmoUniforms};
+pub use types::{GizmoUniforms, GridUniforms};
 
 use wgpu::util::DeviceExt;
 
-use crate::render::{GpuMesh, Mesh, RenderContext, Uniforms};
 use super::gizmos::GizmoVertex;
+use crate::render::{GpuMesh, Mesh, RenderContext, Uniforms};
+use textures::{create_depth_texture, create_render_texture};
 use types::{MAX_GIZMO_VERTICES, MAX_OBJECTS};
-use textures::{create_render_texture, create_depth_texture};
 
 /// 3D viewport for the editor
 pub struct Viewport {
@@ -82,11 +82,8 @@ impl Viewport {
         let (depth_texture, depth_view) = create_depth_texture(device, width, height);
 
         // Register texture with egui
-        let egui_texture_id = egui_renderer.register_native_texture(
-            device,
-            &render_view,
-            wgpu::FilterMode::Linear,
-        );
+        let egui_texture_id =
+            egui_renderer.register_native_texture(device, &render_view, wgpu::FilterMode::Linear);
 
         // Create grid pipeline
         let grid_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -94,19 +91,20 @@ impl Viewport {
             source: wgpu::ShaderSource::Wgsl(include_str!("../../shaders/grid.wgsl").into()),
         });
 
-        let grid_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Grid Bind Group Layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-        });
+        let grid_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Grid Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
 
         let grid_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Grid Uniform Buffer"),
@@ -173,21 +171,23 @@ impl Viewport {
         // Get uniform buffer alignment requirement
         let uniform_alignment = ctx.device.limits().min_uniform_buffer_offset_alignment;
         let uniform_size = std::mem::size_of::<Uniforms>() as u32;
-        let aligned_uniform_size = ((uniform_size + uniform_alignment - 1) / uniform_alignment) * uniform_alignment;
+        let aligned_uniform_size =
+            uniform_size.div_ceil(uniform_alignment) * uniform_alignment;
 
-        let mesh_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Mesh Bind Group Layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: true,
-                    min_binding_size: wgpu::BufferSize::new(uniform_size as u64),
-                },
-                count: None,
-            }],
-        });
+        let mesh_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Mesh Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: true,
+                        min_binding_size: wgpu::BufferSize::new(uniform_size as u64),
+                    },
+                    count: None,
+                }],
+            });
 
         // Create buffer large enough for MAX_OBJECTS
         let buffer_size = aligned_uniform_size as usize * MAX_OBJECTS;
@@ -224,7 +224,8 @@ impl Viewport {
                 module: &mesh_shader,
                 entry_point: Some("vs_main"),
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<crate::render::Vertex>() as wgpu::BufferAddress,
+                    array_stride: std::mem::size_of::<crate::render::Vertex>()
+                        as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &[
                         wgpu::VertexAttribute {
@@ -283,19 +284,20 @@ impl Viewport {
             source: wgpu::ShaderSource::Wgsl(include_str!("../../shaders/gizmo.wgsl").into()),
         });
 
-        let gizmo_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Gizmo Bind Group Layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-        });
+        let gizmo_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Gizmo Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
 
         let gizmo_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Gizmo Uniform Buffer"),
@@ -312,11 +314,12 @@ impl Viewport {
             }],
         });
 
-        let gizmo_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Gizmo Pipeline Layout"),
-            bind_group_layouts: &[&gizmo_bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let gizmo_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Gizmo Pipeline Layout"),
+                bind_group_layouts: &[&gizmo_bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         // Gizmo vertex layout (position + color)
         let gizmo_vertex_layout = wgpu::VertexBufferLayout {
@@ -343,7 +346,7 @@ impl Viewport {
             vertex: wgpu::VertexState {
                 module: &gizmo_shader,
                 entry_point: Some("vs_main"),
-                buffers: &[gizmo_vertex_layout.clone()],
+                buffers: std::slice::from_ref(&gizmo_vertex_layout),
                 compilation_options: Default::default(),
             },
             fragment: Some(wgpu::FragmentState {

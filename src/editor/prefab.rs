@@ -2,9 +2,9 @@
 //!
 //! Reusable object templates that can be saved and instantiated.
 
-use std::path::Path;
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 use super::components::CameraComponent;
 use super::selection::SceneObject;
@@ -106,18 +106,24 @@ impl Prefab {
     }
 
     /// Create a prefab from selected scene objects
-    pub fn from_selection(name: impl Into<String>, objects: &[SceneObject]) -> Result<Self, PrefabError> {
+    pub fn from_selection(
+        name: impl Into<String>,
+        objects: &[SceneObject],
+    ) -> Result<Self, PrefabError> {
         if objects.is_empty() {
             return Err(PrefabError::Empty);
         }
 
         // Calculate center of selection
-        let center = objects.iter()
+        let center = objects
+            .iter()
             .map(|o| o.position)
-            .fold(Vec3::ZERO, |a, b| a + b) / objects.len() as f32;
+            .fold(Vec3::ZERO, |a, b| a + b)
+            / objects.len() as f32;
 
         // Convert to prefab objects with relative positions
-        let prefab_objects: Vec<PrefabObject> = objects.iter()
+        let prefab_objects: Vec<PrefabObject> = objects
+            .iter()
             .map(|obj| PrefabObject {
                 name: obj.name.clone(),
                 local_position: (obj.position - center).to_array(),
@@ -138,7 +144,8 @@ impl Prefab {
 
     /// Instantiate this prefab at a position, returning new scene objects
     pub fn instantiate(&self, position: Vec3, next_id: &mut u32) -> Vec<SceneObject> {
-        self.objects.iter()
+        self.objects
+            .iter()
             .map(|pobj| {
                 let id = *next_id;
                 *next_id += 1;
@@ -169,11 +176,9 @@ impl Prefab {
 
         // Try RON first, then JSON
         if path.extension().map(|e| e == "json").unwrap_or(false) {
-            serde_json::from_str(&content)
-                .map_err(|e| PrefabError::Deserialize(e.to_string()))
+            serde_json::from_str(&content).map_err(|e| PrefabError::Deserialize(e.to_string()))
         } else {
-            ron::from_str(&content)
-                .map_err(|e| PrefabError::Deserialize(e.to_string()))
+            ron::from_str(&content).map_err(|e| PrefabError::Deserialize(e.to_string()))
         }
     }
 
@@ -212,17 +217,15 @@ mod tests {
     fn test_prefab_instantiate() {
         let prefab = Prefab {
             name: "Test".to_string(),
-            objects: vec![
-                PrefabObject {
-                    name: "Obj".to_string(),
-                    local_position: [1.0, 0.0, 0.0],
-                    rotation: [0.0, 0.0, 0.0],
-                    scale: [1.0, 1.0, 1.0],
-                    color: [1.0, 1.0, 1.0, 1.0],
-                    visible: true,
-                    camera: None,
-                },
-            ],
+            objects: vec![PrefabObject {
+                name: "Obj".to_string(),
+                local_position: [1.0, 0.0, 0.0],
+                rotation: [0.0, 0.0, 0.0],
+                scale: [1.0, 1.0, 1.0],
+                color: [1.0, 1.0, 1.0, 1.0],
+                visible: true,
+                camera: None,
+            }],
             version: 1,
         };
 

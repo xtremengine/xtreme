@@ -74,7 +74,8 @@ impl EguiIntegration {
         let output = self.context.end_pass();
 
         // Handle platform output (cursor changes, clipboard, etc.)
-        self.state.handle_platform_output(window, output.platform_output.clone());
+        self.state
+            .handle_platform_output(window, output.platform_output.clone());
 
         self.last_output = Some(output);
     }
@@ -92,11 +93,14 @@ impl EguiIntegration {
         };
 
         // Tessellate shapes
-        let paint_jobs = self.context.tessellate(output.shapes, output.pixels_per_point);
+        let paint_jobs = self
+            .context
+            .tessellate(output.shapes, output.pixels_per_point);
 
         // Update textures
         for (id, delta) in &output.textures_delta.set {
-            self.renderer.update_texture(&ctx.device, &ctx.queue, *id, delta);
+            self.renderer
+                .update_texture(&ctx.device, &ctx.queue, *id, delta);
         }
 
         // Get screen descriptor
@@ -136,7 +140,8 @@ impl EguiIntegration {
             // SAFETY: The render pass is dropped before encoder.finish() is called,
             // which is required for the forget_lifetime to be safe.
             let mut render_pass = render_pass.forget_lifetime();
-            self.renderer.render(&mut render_pass, &paint_jobs, &screen_descriptor);
+            self.renderer
+                .render(&mut render_pass, &paint_jobs, &screen_descriptor);
         }
 
         // Free textures

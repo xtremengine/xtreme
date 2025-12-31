@@ -2,11 +2,11 @@
 
 use glam::Vec3;
 
-use crate::render::Camera;
-use crate::editor::selection::{Ray, pick_object};
-use crate::editor::panels::Tool;
-use crate::editor::gizmos::GizmoAxis;
 use super::EditorApp;
+use crate::editor::gizmos::GizmoAxis;
+use crate::editor::panels::Tool;
+use crate::editor::selection::{pick_object, Ray};
+use crate::render::Camera;
 
 impl EditorApp {
     /// Create a ray from screen position
@@ -23,7 +23,13 @@ impl EditorApp {
         let view_proj = self.camera.view_projection();
         let view_proj_inverse = view_proj.inverse();
 
-        Some(Ray::from_screen(local_x, local_y, width, height, view_proj_inverse))
+        Some(Ray::from_screen(
+            local_x,
+            local_y,
+            width,
+            height,
+            view_proj_inverse,
+        ))
     }
 
     /// Calculate the center of all selected objects (for gizmo positioning)
@@ -54,7 +60,9 @@ impl EditorApp {
 
     /// Handle viewport click for selection or gizmo interaction
     pub fn handle_viewport_click(&mut self, pos: egui::Pos2) {
-        let Some(ray) = self.create_ray(pos) else { return };
+        let Some(ray) = self.create_ray(pos) else {
+            return;
+        };
         let modifiers = self.input_modifiers;
 
         // If we have a selection and a tool that uses gizmo, check gizmo hit first
@@ -67,20 +75,29 @@ impl EditorApp {
                 if axis != GizmoAxis::None {
                     // Collect transforms of all selected objects for batch tracking
                     let selected_ids: Vec<u32> = self.selection.all().to_vec();
-                    let transforms: Vec<(Vec3, Vec3, Vec3)> = selected_ids.iter()
+                    let transforms: Vec<(Vec3, Vec3, Vec3)> = selected_ids
+                        .iter()
                         .filter_map(|id| {
-                            self.scene_objects.iter().find(|o| o.id == *id)
+                            self.scene_objects
+                                .iter()
+                                .find(|o| o.id == *id)
                                 .map(|o| (o.position, o.rotation, o.scale))
                         })
                         .collect();
 
                     // Start gizmo drag
                     let first_transform = transforms.first().copied().unwrap_or_default();
-                    self.gizmo.begin_drag(axis, &ray, gizmo_pos, first_transform);
+                    self.gizmo
+                        .begin_drag(axis, &ray, gizmo_pos, first_transform);
 
                     // Start batch command tracking
-                    self.command_history.begin_drag_batch(&selected_ids, transforms);
-                    log::info!("Started batch gizmo drag on axis {:?} ({} objects)", axis, selected_ids.len());
+                    self.command_history
+                        .begin_drag_batch(&selected_ids, transforms);
+                    log::info!(
+                        "Started batch gizmo drag on axis {:?} ({} objects)",
+                        axis,
+                        selected_ids.len()
+                    );
                     return;
                 }
             }
@@ -91,12 +108,23 @@ impl EditorApp {
             if modifiers.ctrl {
                 // Ctrl+click: toggle selection
                 self.selection.toggle(id);
-                log::info!("Toggled object {} (now {})", id,
-                    if self.selection.is_selected(id) { "selected" } else { "deselected" });
+                log::info!(
+                    "Toggled object {} (now {})",
+                    id,
+                    if self.selection.is_selected(id) {
+                        "selected"
+                    } else {
+                        "deselected"
+                    }
+                );
             } else if modifiers.shift {
                 // Shift+click: add to selection
                 self.selection.add(id);
-                log::info!("Added object {} to selection ({} total)", id, self.selection.count());
+                log::info!(
+                    "Added object {} to selection ({} total)",
+                    id,
+                    self.selection.count()
+                );
             } else {
                 // Normal click: replace selection
                 self.selection.select(id);
@@ -114,10 +142,14 @@ impl EditorApp {
             return;
         }
 
-        let Some(ray) = self.create_ray(pos) else { return };
+        let Some(ray) = self.create_ray(pos) else {
+            return;
+        };
 
         // Get gizmo position (center of selection)
-        let Some(gizmo_pos) = self.selection_center() else { return };
+        let Some(gizmo_pos) = self.selection_center() else {
+            return;
+        };
 
         // Update gizmo and get delta
         if let Some(delta) = self.gizmo.update_drag(&ray, gizmo_pos) {
@@ -196,7 +228,10 @@ impl EditorApp {
                 let orbit_speed = 0.005;
                 self.camera.yaw += delta.x * orbit_speed;
                 self.camera.pitch -= delta.y * orbit_speed;
-                self.camera.pitch = self.camera.pitch.clamp(-89.0_f32.to_radians(), 89.0_f32.to_radians());
+                self.camera.pitch = self
+                    .camera
+                    .pitch
+                    .clamp(-89.0_f32.to_radians(), 89.0_f32.to_radians());
             }
         }
 
@@ -206,7 +241,10 @@ impl EditorApp {
             let orbit_speed = 0.005;
             self.camera.yaw += delta.x * orbit_speed;
             self.camera.pitch -= delta.y * orbit_speed;
-            self.camera.pitch = self.camera.pitch.clamp(-89.0_f32.to_radians(), 89.0_f32.to_radians());
+            self.camera.pitch = self
+                .camera
+                .pitch
+                .clamp(-89.0_f32.to_radians(), 89.0_f32.to_radians());
         }
     }
 }

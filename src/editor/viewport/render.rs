@@ -2,10 +2,10 @@
 
 use glam::{Mat4, Vec3};
 
-use crate::render::{IsometricCamera, RenderContext, Uniforms};
-use super::types::{GridUniforms, GizmoUniforms, MAX_OBJECTS};
+use super::types::{GizmoUniforms, GridUniforms, MAX_OBJECTS};
 use super::Viewport;
 use crate::editor::gizmos::{Gizmo, GizmoVertex};
+use crate::render::{IsometricCamera, RenderContext, Uniforms};
 
 impl Viewport {
     /// Render the viewport
@@ -23,11 +23,16 @@ impl Viewport {
             camera_pos: camera.position().to_array(),
             grid_scale: 1.0,
         };
-        ctx.queue.write_buffer(&self.grid_uniform_buffer, 0, bytemuck::cast_slice(&[grid_uniforms]));
+        ctx.queue.write_buffer(
+            &self.grid_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&[grid_uniforms]),
+        );
 
         // Calculate aligned uniform size
         let uniform_size = std::mem::size_of::<Uniforms>() as u32;
-        let aligned_size = ((uniform_size + self.uniform_alignment - 1) / self.uniform_alignment) * self.uniform_alignment;
+        let aligned_size = uniform_size.div_ceil(self.uniform_alignment)
+            * self.uniform_alignment;
 
         // Write ALL uniforms to the buffer at once (before recording any render passes)
         let num_objects = objects.len().min(MAX_OBJECTS);
@@ -38,7 +43,11 @@ impl Viewport {
                 color: *color,
             };
             let offset = (i as u32 * aligned_size) as u64;
-            ctx.queue.write_buffer(&self.mesh_uniform_buffer, offset, bytemuck::cast_slice(&[uniforms]));
+            ctx.queue.write_buffer(
+                &self.mesh_uniform_buffer,
+                offset,
+                bytemuck::cast_slice(&[uniforms]),
+            );
         }
 
         // Clear pass
@@ -163,12 +172,17 @@ impl Viewport {
             view_proj: view_proj.to_cols_array_2d(),
             model: Mat4::IDENTITY.to_cols_array_2d(), // Vertices already in world space
         };
-        ctx.queue.write_buffer(&self.gizmo_uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+        ctx.queue.write_buffer(
+            &self.gizmo_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&[uniforms]),
+        );
 
         // Upload line vertices
         if !lines.is_empty() {
             let line_data: &[u8] = bytemuck::cast_slice(&lines);
-            ctx.queue.write_buffer(&self.gizmo_line_buffer, 0, line_data);
+            ctx.queue
+                .write_buffer(&self.gizmo_line_buffer, 0, line_data);
         }
 
         // Upload triangle vertices
@@ -284,11 +298,16 @@ impl Viewport {
             view_proj: view_proj.to_cols_array_2d(),
             model: Mat4::IDENTITY.to_cols_array_2d(), // Vertices already in world space
         };
-        ctx.queue.write_buffer(&self.gizmo_uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+        ctx.queue.write_buffer(
+            &self.gizmo_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&[uniforms]),
+        );
 
         // Upload line vertices
         let line_data: &[u8] = bytemuck::cast_slice(&lines);
-        ctx.queue.write_buffer(&self.gizmo_line_buffer, 0, line_data);
+        ctx.queue
+            .write_buffer(&self.gizmo_line_buffer, 0, line_data);
 
         // Render camera wireframes
         {

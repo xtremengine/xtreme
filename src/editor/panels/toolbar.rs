@@ -22,10 +22,10 @@ impl Tool {
     /// Get the tool icon
     pub fn icon(&self) -> &'static str {
         match self {
-            Tool::Select => "⬚",  // Box
-            Tool::Move => "✥",    // Cross arrows
-            Tool::Rotate => "↻",  // Rotate
-            Tool::Scale => "⤢",   // Resize
+            Tool::Select => "⬚", // Box
+            Tool::Move => "✥",   // Cross arrows
+            Tool::Rotate => "↻", // Rotate
+            Tool::Scale => "⤢",  // Resize
         }
     }
 
@@ -107,7 +107,8 @@ impl ToolbarPanel {
                 let is_selected = self.current_tool == tool;
                 let text = format!("{} {}", tool.icon(), tool.shortcut());
 
-                if ui.selectable_label(is_selected, text)
+                if ui
+                    .selectable_label(is_selected, text)
                     .on_hover_text(tool.name())
                     .clicked()
                 {
@@ -138,26 +139,32 @@ impl ToolbarPanel {
                 ui.label("|");
                 match self.current_tool {
                     Tool::Move => {
-                        ui.add(egui::DragValue::new(&mut self.snap_translate)
-                            .speed(0.1)
-                            .range(0.1..=10.0)
-                            .prefix("T: ")
-                            .fixed_decimals(1));
+                        ui.add(
+                            egui::DragValue::new(&mut self.snap_translate)
+                                .speed(0.1)
+                                .range(0.1..=10.0)
+                                .prefix("T: ")
+                                .fixed_decimals(1),
+                        );
                     }
                     Tool::Rotate => {
-                        ui.add(egui::DragValue::new(&mut self.snap_rotate)
-                            .speed(1.0)
-                            .range(1.0..=90.0)
-                            .suffix("°")
-                            .prefix("R: ")
-                            .fixed_decimals(0));
+                        ui.add(
+                            egui::DragValue::new(&mut self.snap_rotate)
+                                .speed(1.0)
+                                .range(1.0..=90.0)
+                                .suffix("°")
+                                .prefix("R: ")
+                                .fixed_decimals(0),
+                        );
                     }
                     Tool::Scale => {
-                        ui.add(egui::DragValue::new(&mut self.snap_scale)
-                            .speed(0.01)
-                            .range(0.01..=1.0)
-                            .prefix("S: ")
-                            .fixed_decimals(2));
+                        ui.add(
+                            egui::DragValue::new(&mut self.snap_scale)
+                                .speed(0.01)
+                                .range(0.01..=1.0)
+                                .prefix("S: ")
+                                .fixed_decimals(2),
+                        );
                     }
                     _ => {}
                 }
@@ -166,11 +173,19 @@ impl ToolbarPanel {
             ui.separator();
 
             // Quick actions
-            if ui.button("Center").on_hover_text("Center view on selection").clicked() {
+            if ui
+                .button("Center")
+                .on_hover_text("Center view on selection")
+                .clicked()
+            {
                 action = ToolbarAction::CenterView;
             }
 
-            if ui.button("Frame All").on_hover_text("Frame all objects").clicked() {
+            if ui
+                .button("Frame All")
+                .on_hover_text("Frame all objects")
+                .clicked()
+            {
                 action = ToolbarAction::FrameAll;
             }
         });

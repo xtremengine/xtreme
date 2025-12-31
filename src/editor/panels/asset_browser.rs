@@ -2,8 +2,8 @@
 //!
 //! File browser for project assets (scenes, prefabs, textures, etc.)
 
-use std::path::PathBuf;
 use egui::Ui;
+use std::path::PathBuf;
 
 /// Type of asset entry
 #[derive(Clone, Debug, PartialEq)]
@@ -135,7 +135,8 @@ impl AssetBrowser {
 
         for entry in read_dir.flatten() {
             let path = entry.path();
-            let name = path.file_name()
+            let name = path
+                .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("?")
                 .to_string();
@@ -152,7 +153,8 @@ impl AssetBrowser {
                     asset_type: AssetType::Directory,
                 });
             } else {
-                let asset_type = path.extension()
+                let asset_type = path
+                    .extension()
                     .and_then(|e| e.to_str())
                     .map(AssetType::from_extension)
                     .unwrap_or(AssetType::Unknown);
@@ -221,7 +223,8 @@ impl AssetBrowser {
 
                 for (i, entry) in self.entries.iter().enumerate() {
                     // Apply filter
-                    if !self.filter.is_empty() && !entry.name.to_lowercase().contains(&filter_lower) {
+                    if !self.filter.is_empty() && !entry.name.to_lowercase().contains(&filter_lower)
+                    {
                         continue;
                     }
 

@@ -1,12 +1,12 @@
 //! Prefab actions: create, instantiate, save, load.
 
-use std::path::PathBuf;
 use glam::Vec3;
+use std::path::PathBuf;
 
-use crate::editor::selection::SceneObject;
+use super::EditorApp;
 use crate::editor::commands::Command;
 use crate::editor::prefab::Prefab;
-use super::EditorApp;
+use crate::editor::selection::SceneObject;
 
 impl EditorApp {
     /// Create a prefab from current selection
@@ -18,13 +18,18 @@ impl EditorApp {
         }
 
         // Collect selected objects
-        let objects: Vec<SceneObject> = selected_ids.iter()
+        let objects: Vec<SceneObject> = selected_ids
+            .iter()
             .filter_map(|id| self.scene_objects.iter().find(|o| o.id == *id).cloned())
             .collect();
 
         match Prefab::from_selection(name, &objects) {
             Ok(prefab) => {
-                log::info!("Created prefab '{}' with {} objects", prefab.name, prefab.object_count());
+                log::info!(
+                    "Created prefab '{}' with {} objects",
+                    prefab.name,
+                    prefab.object_count()
+                );
                 self.prefabs.push(prefab);
                 true
             }
@@ -91,7 +96,11 @@ impl EditorApp {
     pub fn load_prefab(&mut self, path: PathBuf) {
         match Prefab::load(&path) {
             Ok(prefab) => {
-                log::info!("Loaded prefab '{}' with {} objects", prefab.name, prefab.object_count());
+                log::info!(
+                    "Loaded prefab '{}' with {} objects",
+                    prefab.name,
+                    prefab.object_count()
+                );
                 self.prefabs.push(prefab);
             }
             Err(e) => log::error!("Failed to load prefab: {}", e),

@@ -36,15 +36,21 @@ impl AABB {
     }
 
     pub fn contains_point(&self, point: Vec3) -> bool {
-        point.x >= self.min.x && point.x <= self.max.x &&
-        point.y >= self.min.y && point.y <= self.max.y &&
-        point.z >= self.min.z && point.z <= self.max.z
+        point.x >= self.min.x
+            && point.x <= self.max.x
+            && point.y >= self.min.y
+            && point.y <= self.max.y
+            && point.z >= self.min.z
+            && point.z <= self.max.z
     }
 
     pub fn intersects(&self, other: &AABB) -> bool {
-        self.min.x <= other.max.x && self.max.x >= other.min.x &&
-        self.min.y <= other.max.y && self.max.y >= other.min.y &&
-        self.min.z <= other.max.z && self.max.z >= other.min.z
+        self.min.x <= other.max.x
+            && self.max.x >= other.min.x
+            && self.min.y <= other.max.y
+            && self.max.y >= other.min.y
+            && self.min.z <= other.max.z
+            && self.max.z >= other.min.z
     }
 
     pub fn merge(&self, other: &AABB) -> AABB {
@@ -103,7 +109,10 @@ pub struct OBB {
 
 impl OBB {
     pub fn new(center: Vec3, half_extents: Vec3) -> Self {
-        Self { center, half_extents }
+        Self {
+            center,
+            half_extents,
+        }
     }
 }
 

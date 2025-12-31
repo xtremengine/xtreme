@@ -2,9 +2,9 @@
 //!
 //! Shows the scene hierarchy as a tree with context menu reparenting.
 
+use super::super::selection::{ObjectId, SceneObject, Selection};
+use egui::{Color32, RichText, Ui};
 use std::collections::HashSet;
-use egui::{Ui, RichText, Color32};
-use super::super::selection::{SceneObject, Selection, ObjectId};
 
 /// Hierarchy panel for displaying scene objects as a tree
 pub struct HierarchyPanel {
@@ -50,7 +50,7 @@ impl HierarchyPanel {
     pub fn show(
         &mut self,
         ui: &mut Ui,
-        objects: &mut Vec<SceneObject>,
+        objects: &mut [SceneObject],
         selection: &mut Selection,
     ) -> HierarchyAction {
         let mut action = HierarchyAction::None;
@@ -93,7 +93,10 @@ impl HierarchyPanel {
         ui.separator();
 
         // Object count
-        let visible_count = objects.iter().filter(|o| o.visible || self.show_hidden).count();
+        let visible_count = objects
+            .iter()
+            .filter(|o| o.visible || self.show_hidden)
+            .count();
         ui.label(format!("Objects: {} / {}", visible_count, objects.len()));
 
         ui.separator();
@@ -152,7 +155,8 @@ impl HierarchyPanel {
         mut action: HierarchyAction,
     ) -> HierarchyAction {
         // Get children of this parent
-        let children: Vec<_> = objects.iter()
+        let children: Vec<_> = objects
+            .iter()
             .filter(|o| o.hierarchy.parent == parent_id)
             .collect();
 

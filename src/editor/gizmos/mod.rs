@@ -9,14 +9,14 @@
 //! - `drag.rs` - Drag handling and delta calculation
 //! - `math.rs` - Helper math functions
 
-mod types;
+mod drag;
 mod geometry;
 mod hit_test;
-mod drag;
 mod math;
+mod types;
 
 #[allow(unused_imports)]
-pub use types::{GizmoAxis, GizmoMode, GizmoVertex, GizmoDelta, colors};
+pub use types::{colors, GizmoAxis, GizmoDelta, GizmoMode, GizmoVertex};
 
 use glam::Vec3;
 

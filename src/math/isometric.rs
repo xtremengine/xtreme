@@ -26,7 +26,11 @@ impl IsometricCoord {
     }
 
     pub fn flat(col: i32, row: i32) -> Self {
-        Self { col, row, height: 0 }
+        Self {
+            col,
+            row,
+            height: 0,
+        }
     }
 }
 
@@ -49,10 +53,10 @@ impl Default for IsometricConfig {
     fn default() -> Self {
         Self {
             tile_width: 64.0,
-            tile_height: 32.0,  // 2:1 ratio
+            tile_height: 32.0, // 2:1 ratio
             height_step: 16.0,
-            camera_yaw: std::f32::consts::FRAC_PI_4,  // 45°
-            camera_pitch: (1.0_f32 / 2.0_f32.sqrt()).atan(),  // ~35.264°
+            camera_yaw: std::f32::consts::FRAC_PI_4, // 45°
+            camera_pitch: (1.0_f32 / 2.0_f32.sqrt()).atan(), // ~35.264°
         }
     }
 }
@@ -136,15 +140,17 @@ pub fn isometric_view_matrix(config: &IsometricConfig, target: Vec3, distance: f
 }
 
 /// Create orthographic projection matrix for isometric view
-pub fn isometric_projection_matrix(
-    width: f32,
-    height: f32,
-    near: f32,
-    far: f32,
-) -> Mat4 {
+pub fn isometric_projection_matrix(width: f32, height: f32, near: f32, far: f32) -> Mat4 {
     let half_width = width / 2.0;
     let half_height = height / 2.0;
-    Mat4::orthographic_rh(-half_width, half_width, -half_height, half_height, near, far)
+    Mat4::orthographic_rh(
+        -half_width,
+        half_width,
+        -half_height,
+        half_height,
+        near,
+        far,
+    )
 }
 
 /// Calculate depth/z-order for sorting sprites in 2D isometric

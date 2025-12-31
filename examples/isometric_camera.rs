@@ -3,9 +3,7 @@
 //! Demonstrates the isometric coordinate system and transformations.
 
 use glam::{Vec2, Vec3};
-use xtreme::math::isometric::{
-    world_to_screen, screen_to_world, IsometricConfig, IsometricCoord,
-};
+use xtreme::math::isometric::{screen_to_world, world_to_screen, IsometricConfig, IsometricCoord};
 
 fn main() {
     env_logger::init();

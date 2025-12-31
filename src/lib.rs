@@ -32,21 +32,21 @@
 //! }
 //! ```
 
-pub mod core;
-pub mod render;
-pub mod input;
-pub mod physics;
 pub mod ai;
-pub mod math;
-pub mod utils;
+pub mod core;
 pub mod editor;
+pub mod input;
+pub mod math;
+pub mod physics;
+pub mod render;
 pub mod scripting;
+pub mod utils;
 
 /// Prelude module - commonly used types
 pub mod prelude {
-    pub use crate::core::{World, Entity, Component};
+    pub use crate::core::{Component, Entity, World};
     pub use crate::math::Transform;
-    pub use crate::render::{Mesh, Material, Camera};
+    pub use crate::render::{Camera, Material, Mesh};
 }
 
 /// Engine version

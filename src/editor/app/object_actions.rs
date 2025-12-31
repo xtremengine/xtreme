@@ -2,10 +2,10 @@
 
 use glam::Vec3;
 
-use crate::editor::selection::SceneObject;
-use crate::editor::commands::Command;
-use crate::editor::hierarchy::helpers::{get_descendants, can_reparent};
 use super::EditorApp;
+use crate::editor::commands::Command;
+use crate::editor::hierarchy::helpers::{can_reparent, get_descendants};
+use crate::editor::selection::SceneObject;
 
 impl EditorApp {
     /// Create a new scene object
@@ -40,7 +40,9 @@ impl EditorApp {
         }
 
         // Remove from parent's children list if has parent
-        if let Some(parent_id) = self.scene_objects.iter()
+        if let Some(parent_id) = self
+            .scene_objects
+            .iter()
             .find(|o| o.id == id)
             .and_then(|o| o.hierarchy.parent)
         {
@@ -84,20 +86,30 @@ impl EditorApp {
         }
 
         // Get old parent id
-        let old_parent_id = self.scene_objects.iter()
+        let old_parent_id = self
+            .scene_objects
+            .iter()
             .find(|o| o.id == child_id)
             .and_then(|o| o.hierarchy.parent);
 
         // Remove from old parent's children list
         if let Some(old_parent_id) = old_parent_id {
-            if let Some(old_parent) = self.scene_objects.iter_mut().find(|o| o.id == old_parent_id) {
+            if let Some(old_parent) = self
+                .scene_objects
+                .iter_mut()
+                .find(|o| o.id == old_parent_id)
+            {
                 old_parent.hierarchy.remove_child(child_id);
             }
         }
 
         // Add to new parent's children list
         if let Some(new_parent_id) = new_parent_id {
-            if let Some(new_parent) = self.scene_objects.iter_mut().find(|o| o.id == new_parent_id) {
+            if let Some(new_parent) = self
+                .scene_objects
+                .iter_mut()
+                .find(|o| o.id == new_parent_id)
+            {
                 new_parent.hierarchy.add_child(child_id);
             }
         }

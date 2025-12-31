@@ -28,7 +28,11 @@ impl Position {
     }
 
     pub fn from_vec3(v: Vec3) -> Self {
-        Self { x: v.x, y: v.y, z: v.z }
+        Self {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+        }
     }
 }
 
@@ -42,7 +46,9 @@ pub struct Rotation {
 
 impl Rotation {
     pub fn identity() -> Self {
-        Self { quat: Quat::IDENTITY }
+        Self {
+            quat: Quat::IDENTITY,
+        }
     }
 
     pub fn from_euler(pitch: f32, yaw: f32, roll: f32) -> Self {

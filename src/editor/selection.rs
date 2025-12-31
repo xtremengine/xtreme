@@ -2,10 +2,10 @@
 //!
 //! Handles object selection in the editor viewport.
 
-use glam::{Vec3, Mat4, Quat, EulerRot};
+use glam::{EulerRot, Mat4, Quat, Vec3};
 
 use crate::editor::components::CameraComponent;
-use crate::editor::hierarchy::{Hierarchy, helpers::HasHierarchy};
+use crate::editor::hierarchy::{helpers::HasHierarchy, Hierarchy};
 
 /// Unique identifier for scene objects
 pub type ObjectId = u32;
@@ -88,7 +88,12 @@ impl SceneObject {
     pub fn local_matrix(&self) -> Mat4 {
         Mat4::from_scale_rotation_translation(
             self.scale,
-            Quat::from_euler(EulerRot::XYZ, self.rotation.x, self.rotation.y, self.rotation.z),
+            Quat::from_euler(
+                EulerRot::XYZ,
+                self.rotation.x,
+                self.rotation.y,
+                self.rotation.z,
+            ),
             self.position,
         )
     }

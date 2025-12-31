@@ -2,8 +2,8 @@
 
 use glam::Vec3;
 
-use crate::editor::commands::Command;
 use super::EditorApp;
+use crate::editor::commands::Command;
 
 impl EditorApp {
     /// Copy selected objects to clipboard

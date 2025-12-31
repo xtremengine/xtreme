@@ -1,8 +1,8 @@
 //! # Collision Detection
 
-use glam::Vec3;
 use super::shapes::AABB;
 use crate::core::Entity;
+use glam::Vec3;
 
 /// Contact point information
 #[derive(Clone, Copy, Debug)]
@@ -50,13 +50,25 @@ pub fn aabb_vs_aabb(a: &AABB, b: &AABB) -> Option<Contact> {
 
     // Find minimum overlap axis
     let (depth, normal) = if overlap_x <= overlap_y && overlap_x <= overlap_z {
-        let sign = if a.center().x < b.center().x { -1.0 } else { 1.0 };
+        let sign = if a.center().x < b.center().x {
+            -1.0
+        } else {
+            1.0
+        };
         (overlap_x, Vec3::new(sign, 0.0, 0.0))
     } else if overlap_y <= overlap_z {
-        let sign = if a.center().y < b.center().y { -1.0 } else { 1.0 };
+        let sign = if a.center().y < b.center().y {
+            -1.0
+        } else {
+            1.0
+        };
         (overlap_y, Vec3::new(0.0, sign, 0.0))
     } else {
-        let sign = if a.center().z < b.center().z { -1.0 } else { 1.0 };
+        let sign = if a.center().z < b.center().z {
+            -1.0
+        } else {
+            1.0
+        };
         (overlap_z, Vec3::new(0.0, 0.0, sign))
     };
 

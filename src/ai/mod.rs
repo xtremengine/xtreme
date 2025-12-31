@@ -20,16 +20,16 @@
 //! ```
 
 mod brain;
-mod perception;
-mod pathfinding;
-mod navmesh;
 #[cfg(feature = "ml")]
 mod inference;
+mod navmesh;
+mod pathfinding;
+mod perception;
 
 pub use brain::{AIBrain, AIState, Decision};
-pub use perception::{Sensor, FieldOfView, PerceptionMemory};
+pub use navmesh::{NavAgent, NavMesh};
 pub use pathfinding::{AStar, Grid, Path, PathNode};
-pub use navmesh::{NavMesh, NavAgent};
+pub use perception::{FieldOfView, PerceptionMemory, Sensor};
 
 #[cfg(feature = "ml")]
-pub use inference::{OnnxModel, ModelInput, ModelOutput};
+pub use inference::{ModelInput, ModelOutput, OnnxModel};

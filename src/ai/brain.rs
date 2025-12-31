@@ -4,7 +4,9 @@ use crate::core::Component;
 
 /// AI state machine states
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Default)]
 pub enum AIState {
+    #[default]
     Idle,
     Patrol,
     Chase,
@@ -14,15 +16,12 @@ pub enum AIState {
     Custom(u32),
 }
 
-impl Default for AIState {
-    fn default() -> Self {
-        Self::Idle
-    }
-}
 
 /// Decision from AI system
 #[derive(Clone, Debug)]
+#[derive(Default)]
 pub enum Decision {
+    #[default]
     None,
     MoveTo { target: glam::Vec3 },
     Attack { target_entity: crate::core::Entity },
@@ -31,11 +30,6 @@ pub enum Decision {
     Custom(String),
 }
 
-impl Default for Decision {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 /// AI brain component for intelligent agents
 #[derive(Clone, Debug, Default)]

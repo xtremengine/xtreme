@@ -5,13 +5,14 @@
 //! Run with: `cargo run --example editor`
 
 use xtreme::editor::EditorApp;
-use xtreme::render::{WindowConfig, run};
+use xtreme::render::{run, WindowConfig};
 
 fn main() {
     // Initialize logging
     env_logger::Builder::from_env(
-        env_logger::Env::default().default_filter_or("info,wgpu_core=warn")
-    ).init();
+        env_logger::Env::default().default_filter_or("info,wgpu_core=warn"),
+    )
+    .init();
 
     log::info!("Starting Xtreme Engine Editor v{}", xtreme::VERSION);
 

@@ -1,22 +1,22 @@
 //! Editor application state and initialization.
 
-use std::sync::Arc;
 use glam::Vec3;
+use std::sync::Arc;
 use winit::window::Window as WinitWindow;
 
-use crate::render::{RenderContext, IsometricCamera, EguiIntegration};
-use crate::editor::viewport::Viewport;
-use crate::editor::selection::{SceneObject, Selection};
-use crate::editor::panels::{HierarchyPanel, ToolbarPanel, InspectorPanel, AssetBrowser};
-use crate::editor::gizmos::Gizmo;
 use crate::editor::commands::CommandHistory;
-use crate::editor::shortcuts::ShortcutManager;
-use crate::editor::scene::SceneManager;
-use crate::editor::snap::SnapSettings;
-use crate::editor::prefab::Prefab;
 use crate::editor::game_window::GameWindow;
+use crate::editor::gizmos::Gizmo;
+use crate::editor::panels::{AssetBrowser, HierarchyPanel, InspectorPanel, ToolbarPanel};
+use crate::editor::prefab::Prefab;
+use crate::editor::scene::SceneManager;
+use crate::editor::selection::{SceneObject, Selection};
+use crate::editor::shortcuts::ShortcutManager;
+use crate::editor::snap::SnapSettings;
+use crate::editor::viewport::Viewport;
+use crate::render::{EguiIntegration, IsometricCamera, RenderContext};
 #[cfg(feature = "scripting")]
-use crate::scripting::{ScriptRuntime, ScriptContext};
+use crate::scripting::{ScriptContext, ScriptRuntime};
 
 /// File dialog action type
 #[derive(Clone, Copy, Debug)]

@@ -2,9 +2,9 @@
 //!
 //! Defines the API exposed to Python scripts for manipulating game objects.
 
-use std::collections::HashMap;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
+use std::collections::HashMap;
 
 /// Input state accessible to scripts
 #[derive(Clone, Debug, Default)]
@@ -104,7 +104,13 @@ impl ScriptContext {
     }
 
     /// Register an object's transform
-    pub fn register_object(&mut self, id: u32, name: String, transform: ObjectTransform, visible: bool) {
+    pub fn register_object(
+        &mut self,
+        id: u32,
+        name: String,
+        transform: ObjectTransform,
+        visible: bool,
+    ) {
         self.transforms.insert(id, transform);
         self.names.insert(id, name);
         self.visibility.insert(id, visible);
@@ -211,13 +217,13 @@ impl ScriptContext {
 
         // Current object's transform
         if let Some(transform) = self.transforms.get(&self.current_object) {
-            if let Ok(pos) = PyList::new(py, &transform.position) {
+            if let Ok(pos) = PyList::new(py, transform.position) {
                 let _ = dict.set_item("position", pos);
             }
-            if let Ok(rot) = PyList::new(py, &transform.rotation) {
+            if let Ok(rot) = PyList::new(py, transform.rotation) {
                 let _ = dict.set_item("rotation", rot);
             }
-            if let Ok(scale) = PyList::new(py, &transform.scale) {
+            if let Ok(scale) = PyList::new(py, transform.scale) {
                 let _ = dict.set_item("scale", scale);
             }
         }
@@ -311,7 +317,7 @@ fn xtreme_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     #[pyfunction]
     fn get_time(ctx: &Bound<'_, PyDict>) -> PyResult<f32> {
         if let Some(time) = ctx.get_item("time").ok().flatten() {
-            return Ok(time.extract()?);
+            return time.extract();
         }
         Ok(0.0)
     }

@@ -56,10 +56,7 @@ pub enum Command {
         new_color: [f32; 4],
     },
     /// Toggle visibility
-    ToggleVisibility {
-        object_id: u32,
-        was_visible: bool,
-    },
+    ToggleVisibility { object_id: u32, was_visible: bool },
     /// Batch of commands (for complex operations)
     Batch(Vec<Command>),
 }
@@ -78,9 +75,15 @@ impl Command {
             }
             Command::Create { name, .. } => format!("Create {}", name),
             Command::Delete { name, .. } => format!("Delete {}", name),
-            Command::Rename { old_name, new_name, .. } => format!("Rename {} to {}", old_name, new_name),
-            Command::ChangeColor { object_id, .. } => format!("Change color of object {}", object_id),
-            Command::ToggleVisibility { object_id, .. } => format!("Toggle visibility of object {}", object_id),
+            Command::Rename {
+                old_name, new_name, ..
+            } => format!("Rename {} to {}", old_name, new_name),
+            Command::ChangeColor { object_id, .. } => {
+                format!("Change color of object {}", object_id)
+            }
+            Command::ToggleVisibility { object_id, .. } => {
+                format!("Toggle visibility of object {}", object_id)
+            }
             Command::Batch(cmds) => format!("Batch ({} commands)", cmds.len()),
         }
     }
@@ -148,7 +151,13 @@ impl CommandHistory {
 
     /// Update the pending transform during drag
     pub fn update_drag(&mut self, position: Vec3, rotation: Vec3, scale: Vec3) {
-        if let Some(Command::Transform { new_position, new_rotation, new_scale, .. }) = &mut self.pending_transform {
+        if let Some(Command::Transform {
+            new_position,
+            new_rotation,
+            new_scale,
+            ..
+        }) = &mut self.pending_transform
+        {
             *new_position = position;
             *new_rotation = rotation;
             *new_scale = scale;
@@ -160,8 +169,20 @@ impl CommandHistory {
         self.tracking_drag = false;
         if let Some(cmd) = self.pending_transform.take() {
             // Only add if there was actual change
-            if let Command::Transform { old_position, old_rotation, old_scale, new_position, new_rotation, new_scale, .. } = &cmd {
-                if *old_position != *new_position || *old_rotation != *new_rotation || *old_scale != *new_scale {
+            if let Command::Transform {
+                old_position,
+                old_rotation,
+                old_scale,
+                new_position,
+                new_rotation,
+                new_scale,
+                ..
+            } = &cmd
+            {
+                if *old_position != *new_position
+                    || *old_rotation != *new_rotation
+                    || *old_scale != *new_scale
+                {
                     self.execute(cmd);
                 }
             }
@@ -190,8 +211,15 @@ impl CommandHistory {
         self.tracking_drag = false;
         if let Some(cmd) = self.pending_batch.take() {
             // Only add if there was actual change
-            if let Command::BatchTransform { old_transforms, new_transforms, .. } = &cmd {
-                let has_changes = old_transforms.iter().zip(new_transforms.iter())
+            if let Command::BatchTransform {
+                old_transforms,
+                new_transforms,
+                ..
+            } = &cmd
+            {
+                let has_changes = old_transforms
+                    .iter()
+                    .zip(new_transforms.iter())
                     .any(|(old, new)| old.0 != new.0 || old.1 != new.1 || old.2 != new.2);
                 if has_changes {
                     self.execute(cmd);

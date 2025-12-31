@@ -2,12 +2,12 @@
 //!
 //! Manages script execution, lifecycle, and Python interpreter.
 
+use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use pyo3::prelude::*;
 
-use super::script::{Script, ScriptId, ScriptInstance, ScriptError};
 use super::api::ScriptContext;
+use super::script::{Script, ScriptError, ScriptId, ScriptInstance};
 
 /// Runtime for managing Python scripts
 pub struct ScriptRuntime {
@@ -92,7 +92,11 @@ impl ScriptRuntime {
     }
 
     /// Load a script from file and attach to an object
-    pub fn attach_script(&mut self, path: PathBuf, object_id: u32) -> Result<ScriptId, ScriptError> {
+    pub fn attach_script(
+        &mut self,
+        path: PathBuf,
+        object_id: u32,
+    ) -> Result<ScriptId, ScriptError> {
         if !self.initialized {
             self.initialize()?;
         }
@@ -101,7 +105,12 @@ impl ScriptRuntime {
         self.next_id += 1;
 
         let script = Script::from_file(id, path, object_id)?;
-        log::info!("Loaded script '{}' (id={}) for object {}", script.name, id, object_id);
+        log::info!(
+            "Loaded script '{}' (id={}) for object {}",
+            script.name,
+            id,
+            object_id
+        );
 
         // Compile the script
         Python::with_gil(|py| {
@@ -117,7 +126,12 @@ impl ScriptRuntime {
     }
 
     /// Attach a script from source code
-    pub fn attach_script_source(&mut self, name: impl Into<String>, source: impl Into<String>, object_id: u32) -> Result<ScriptId, ScriptError> {
+    pub fn attach_script_source(
+        &mut self,
+        name: impl Into<String>,
+        source: impl Into<String>,
+        object_id: u32,
+    ) -> Result<ScriptId, ScriptError> {
         if !self.initialized {
             self.initialize()?;
         }
@@ -126,7 +140,12 @@ impl ScriptRuntime {
         self.next_id += 1;
 
         let script = Script::from_source(id, name, source, object_id);
-        log::info!("Attached inline script '{}' (id={}) to object {}", script.name, id, object_id);
+        log::info!(
+            "Attached inline script '{}' (id={}) to object {}",
+            script.name,
+            id,
+            object_id
+        );
 
         // Compile the script
         Python::with_gil(|py| {
@@ -151,7 +170,8 @@ impl ScriptRuntime {
 
     /// Get all scripts attached to an object
     pub fn get_scripts_for_object(&self, object_id: u32) -> Vec<ScriptId> {
-        self.scripts.iter()
+        self.scripts
+            .iter()
             .filter(|(_, s)| s.object_id == object_id)
             .map(|(id, _)| *id)
             .collect()
@@ -192,7 +212,11 @@ impl ScriptRuntime {
     }
 
     /// Call _physics_update on all active scripts
-    pub fn call_physics_update(&self, context: &mut ScriptContext, delta: f32) -> Result<(), ScriptError> {
+    pub fn call_physics_update(
+        &self,
+        context: &mut ScriptContext,
+        delta: f32,
+    ) -> Result<(), ScriptError> {
         Python::with_gil(|py| {
             for (id, instance) in &self.instances {
                 context.set_current_object(instance.object_id);
@@ -207,7 +231,9 @@ impl ScriptRuntime {
 
     /// Reload a script from disk
     pub fn reload_script(&mut self, script_id: ScriptId) -> Result<(), ScriptError> {
-        let script = self.scripts.get_mut(&script_id)
+        let script = self
+            .scripts
+            .get_mut(&script_id)
             .ok_or_else(|| ScriptError::NotFound(format!("Script {}", script_id)))?;
 
         script.reload()?;

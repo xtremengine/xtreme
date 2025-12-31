@@ -6,8 +6,7 @@
 
 use std::sync::Arc;
 use wgpu::{
-    Adapter, Device, Instance, Queue, Surface, SurfaceConfiguration,
-    TextureFormat, PresentMode,
+    Adapter, Device, Instance, PresentMode, Queue, Surface, SurfaceConfiguration, TextureFormat,
 };
 use winit::window::Window;
 
@@ -191,7 +190,12 @@ impl RenderContext {
             }
         };
 
-        log::info!("Surface format: {:?}, VSync: {}, PresentMode: {:?}", format, vsync, present_mode);
+        log::info!(
+            "Surface format: {:?}, VSync: {}, PresentMode: {:?}",
+            format,
+            vsync,
+            present_mode
+        );
 
         let config = SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -253,15 +257,16 @@ impl RenderContext {
     /// Begin a new frame, returns the surface texture and view
     pub fn begin_frame(&self) -> Result<(wgpu::SurfaceTexture, wgpu::TextureView), RenderError> {
         let output = self.get_current_texture()?;
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
         Ok((output, view))
     }
 
     /// Create a command encoder for this frame
     pub fn create_encoder(&self, label: &str) -> wgpu::CommandEncoder {
-        self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some(label),
-        })
+        self.device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some(label) })
     }
 
     /// Submit commands to the queue

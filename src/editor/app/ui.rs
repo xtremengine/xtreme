@@ -2,13 +2,13 @@
 
 use glam::Vec3;
 
-#[allow(unused_imports)]
-use crate::render::IsometricCamera;
-use crate::editor::selection::SceneObject;
-use crate::editor::panels::{HierarchyAction, ToolbarAction, Tool, AssetAction};
-use crate::editor::gizmos::GizmoAxis;
 use super::state::InputModifiers;
 use super::EditorApp;
+use crate::editor::gizmos::GizmoAxis;
+use crate::editor::panels::{AssetAction, HierarchyAction, Tool, ToolbarAction};
+use crate::editor::selection::SceneObject;
+#[allow(unused_imports)]
+use crate::render::IsometricCamera;
 
 /// Simple pseudo-random float [0, 1)
 pub fn rand_float() -> f32 {
@@ -47,14 +47,18 @@ impl EditorApp {
             ui.horizontal(|ui| {
                 // Play/Stop buttons
                 if self.is_playing {
-                    if ui.add(egui::Button::new("⏹ Stop").fill(egui::Color32::from_rgb(180, 60, 60))).clicked() {
+                    if ui
+                        .add(egui::Button::new("⏹ Stop").fill(egui::Color32::from_rgb(180, 60, 60)))
+                        .clicked()
+                    {
                         self.stop_play();
                     }
                     ui.label(format!("▶ {:.1}s", self.play_time));
-                } else {
-                    if ui.add(egui::Button::new("▶ Play").fill(egui::Color32::from_rgb(60, 180, 60))).clicked() {
-                        self.start_play();
-                    }
+                } else if ui
+                    .add(egui::Button::new("▶ Play").fill(egui::Color32::from_rgb(60, 180, 60)))
+                    .clicked()
+                {
+                    self.start_play();
                 }
 
                 ui.separator();
@@ -80,7 +84,9 @@ impl EditorApp {
         egui::SidePanel::left("hierarchy")
             .default_width(200.0)
             .show(ctx, |ui| {
-                let action = self.hierarchy_panel.show(ui, &mut self.scene_objects, &mut self.selection);
+                let action =
+                    self.hierarchy_panel
+                        .show(ui, &mut self.scene_objects, &mut self.selection);
                 match action {
                     HierarchyAction::CreateCube => {
                         let obj = SceneObject::cube(self.next_id, Vec3::new(0.0, 0.5, 0.0));
@@ -88,7 +94,8 @@ impl EditorApp {
                         self.create_object(obj);
                     }
                     HierarchyAction::CreateEmpty => {
-                        let mut obj = SceneObject::new(self.next_id, format!("Empty {}", self.next_id));
+                        let mut obj =
+                            SceneObject::new(self.next_id, format!("Empty {}", self.next_id));
                         self.next_id += 1;
                         obj.visible = true;
                         self.create_object(obj);
@@ -125,7 +132,8 @@ impl EditorApp {
         egui::SidePanel::right("inspector")
             .default_width(280.0)
             .show(ctx, |ui| {
-                self.inspector_panel.show(ui, &mut self.scene_objects, &self.selection);
+                self.inspector_panel
+                    .show(ui, &mut self.scene_objects, &self.selection);
 
                 ui.separator();
 
@@ -134,13 +142,27 @@ impl EditorApp {
                     ui.heading("Camera");
                     ui.horizontal(|ui| {
                         ui.label("Distance:");
-                        ui.add(egui::DragValue::new(&mut self.camera.distance).speed(0.1).range(1.0..=100.0).fixed_decimals(1));
+                        ui.add(
+                            egui::DragValue::new(&mut self.camera.distance)
+                                .speed(0.1)
+                                .range(1.0..=100.0)
+                                .fixed_decimals(1),
+                        );
                     });
 
                     let mut pitch_deg = self.camera.pitch.to_degrees();
                     ui.horizontal(|ui| {
                         ui.label("Pitch:");
-                        if ui.add(egui::DragValue::new(&mut pitch_deg).speed(1.0).range(-89.0..=89.0).suffix("°").fixed_decimals(1)).changed() {
+                        if ui
+                            .add(
+                                egui::DragValue::new(&mut pitch_deg)
+                                    .speed(1.0)
+                                    .range(-89.0..=89.0)
+                                    .suffix("°")
+                                    .fixed_decimals(1),
+                            )
+                            .changed()
+                        {
                             self.camera.pitch = pitch_deg.to_radians();
                         }
                     });
@@ -148,14 +170,27 @@ impl EditorApp {
                     let mut yaw_deg = self.camera.yaw.to_degrees();
                     ui.horizontal(|ui| {
                         ui.label("Yaw:");
-                        if ui.add(egui::DragValue::new(&mut yaw_deg).speed(1.0).suffix("°").fixed_decimals(1)).changed() {
+                        if ui
+                            .add(
+                                egui::DragValue::new(&mut yaw_deg)
+                                    .speed(1.0)
+                                    .suffix("°")
+                                    .fixed_decimals(1),
+                            )
+                            .changed()
+                        {
                             self.camera.yaw = yaw_deg.to_radians();
                         }
                     });
 
                     ui.horizontal(|ui| {
                         ui.label("Zoom:");
-                        ui.add(egui::DragValue::new(&mut self.camera.zoom).speed(0.1).range(1.0..=50.0).fixed_decimals(1));
+                        ui.add(
+                            egui::DragValue::new(&mut self.camera.zoom)
+                                .speed(0.1)
+                                .range(1.0..=50.0)
+                                .fixed_decimals(1),
+                        );
                     });
                 });
 
@@ -168,28 +203,34 @@ impl EditorApp {
                 if self.snap_settings.enabled {
                     ui.horizontal(|ui| {
                         ui.label("Grid:");
-                        ui.add(egui::DragValue::new(&mut self.snap_settings.grid_size)
-                            .speed(0.1)
-                            .range(0.1..=10.0)
-                            .suffix(" u")
-                            .fixed_decimals(1));
+                        ui.add(
+                            egui::DragValue::new(&mut self.snap_settings.grid_size)
+                                .speed(0.1)
+                                .range(0.1..=10.0)
+                                .suffix(" u")
+                                .fixed_decimals(1),
+                        );
                     });
 
                     ui.horizontal(|ui| {
                         ui.label("Rotation:");
-                        ui.add(egui::DragValue::new(&mut self.snap_settings.rotation_snap)
-                            .speed(1.0)
-                            .range(1.0..=90.0)
-                            .suffix("°")
-                            .fixed_decimals(0));
+                        ui.add(
+                            egui::DragValue::new(&mut self.snap_settings.rotation_snap)
+                                .speed(1.0)
+                                .range(1.0..=90.0)
+                                .suffix("°")
+                                .fixed_decimals(0),
+                        );
                     });
 
                     ui.horizontal(|ui| {
                         ui.label("Scale:");
-                        ui.add(egui::DragValue::new(&mut self.snap_settings.scale_snap)
-                            .speed(0.05)
-                            .range(0.01..=1.0)
-                            .fixed_decimals(2));
+                        ui.add(
+                            egui::DragValue::new(&mut self.snap_settings.scale_snap)
+                                .speed(0.05)
+                                .range(0.01..=1.0)
+                                .fixed_decimals(2),
+                        );
                     });
 
                     ui.horizontal(|ui| {
@@ -211,12 +252,16 @@ impl EditorApp {
     }
 
     fn draw_scripts_section(&mut self, ui: &mut egui::Ui) {
-        let Some(obj_id) = self.selection.first() else { return };
+        let Some(obj_id) = self.selection.first() else {
+            return;
+        };
 
         ui.separator();
         ui.heading("Scripts");
 
-        let script_ids: Vec<u32> = self.scene_objects.iter()
+        let script_ids: Vec<u32> = self
+            .scene_objects
+            .iter()
             .find(|o| o.id == obj_id)
             .map(|o| o.scripts.clone())
             .unwrap_or_default();
@@ -299,7 +344,11 @@ impl EditorApp {
     fn draw_status_bar(&mut self, ctx: &egui::Context, viewport_size: &(f32, f32)) {
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                let dirty = if self.scene_manager.is_dirty() { "*" } else { "" };
+                let dirty = if self.scene_manager.is_dirty() {
+                    "*"
+                } else {
+                    ""
+                };
                 ui.label(format!("{}{}", dirty, self.scene_manager.scene_name()));
                 ui.separator();
 
@@ -317,7 +366,10 @@ impl EditorApp {
                     ui.separator();
                 }
 
-                ui.label(format!("Viewport: {:.0}x{:.0}", viewport_size.0, viewport_size.1));
+                ui.label(format!(
+                    "Viewport: {:.0}x{:.0}",
+                    viewport_size.0, viewport_size.1
+                ));
             });
         });
     }
@@ -333,7 +385,7 @@ impl EditorApp {
 
                 let response = ui.add(
                     egui::Image::new(egui::load::SizedTexture::new(texture_id, size))
-                        .sense(egui::Sense::click_and_drag())
+                        .sense(egui::Sense::click_and_drag()),
                 );
 
                 self.viewport_rect = response.rect;
@@ -376,21 +428,36 @@ impl EditorApp {
                         if let Some(ray) = self.create_ray(pos) {
                             if self.toolbar_panel.current_tool != Tool::Select {
                                 if let Some(id) = self.selection.first() {
-                                    if let Some(obj) = self.scene_objects.iter().find(|o| o.id == id) {
+                                    if let Some(obj) =
+                                        self.scene_objects.iter().find(|o| o.id == id)
+                                    {
                                         let gizmo_scale = self.camera.distance * 0.08;
                                         // Calculate world position separately to avoid borrow issues
-                                        let world_pos = if let Some(parent_id) = obj.hierarchy.parent {
-                                            if let Some(parent) = self.scene_objects.iter().find(|p| p.id == parent_id) {
-                                                let parent_matrix = parent.local_matrix();
-                                                let local_pos = obj.position;
-                                                (parent_matrix * glam::Vec4::new(local_pos.x, local_pos.y, local_pos.z, 1.0)).truncate()
+                                        let world_pos =
+                                            if let Some(parent_id) = obj.hierarchy.parent {
+                                                if let Some(parent) = self
+                                                    .scene_objects
+                                                    .iter()
+                                                    .find(|p| p.id == parent_id)
+                                                {
+                                                    let parent_matrix = parent.local_matrix();
+                                                    let local_pos = obj.position;
+                                                    (parent_matrix
+                                                        * glam::Vec4::new(
+                                                            local_pos.x,
+                                                            local_pos.y,
+                                                            local_pos.z,
+                                                            1.0,
+                                                        ))
+                                                    .truncate()
+                                                } else {
+                                                    obj.position
+                                                }
                                             } else {
                                                 obj.position
-                                            }
-                                        } else {
-                                            obj.position
-                                        };
-                                        let axis = self.gizmo.hit_test(&ray, world_pos, gizmo_scale);
+                                            };
+                                        let axis =
+                                            self.gizmo.hit_test(&ray, world_pos, gizmo_scale);
                                         self.gizmo.set_hovered(axis);
                                     }
                                 }

@@ -9,10 +9,10 @@
 //! - Event queue for frame-based processing
 //! - Screen-to-world coordinate conversion
 
+mod events;
 mod keyboard;
 mod mouse;
-mod events;
 
-pub use keyboard::{KeyState, KeyCode, Keyboard};
-pub use mouse::{MouseState, MouseButton, Mouse};
 pub use events::{InputEvent, InputEventQueue};
+pub use keyboard::{KeyCode, KeyState, Keyboard};
+pub use mouse::{Mouse, MouseButton, MouseState};

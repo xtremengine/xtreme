@@ -2,10 +2,10 @@
 //!
 //! Types and structures for Python scripts attached to objects.
 
-use std::path::PathBuf;
-use std::ffi::CString;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use std::ffi::CString;
+use std::path::PathBuf;
 use thiserror::Error;
 
 /// Unique identifier for a script instance
@@ -55,7 +55,8 @@ impl Script {
         let source = std::fs::read_to_string(&path)
             .map_err(|e| ScriptError::LoadError(format!("{}: {}", path.display(), e)))?;
 
-        let name = path.file_stem()
+        let name = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown")
             .to_string();
@@ -71,7 +72,12 @@ impl Script {
     }
 
     /// Create a new script from source code
-    pub fn from_source(id: ScriptId, name: impl Into<String>, source: impl Into<String>, object_id: u32) -> Self {
+    pub fn from_source(
+        id: ScriptId,
+        name: impl Into<String>,
+        source: impl Into<String>,
+        object_id: u32,
+    ) -> Self {
         Self {
             id,
             name: name.into(),
@@ -118,12 +124,7 @@ impl ScriptInstance {
             .map_err(|e| ScriptError::CompileError(format!("Invalid name: {}", e)))?;
 
         // Create a new module for this script
-        let module = PyModule::from_code(
-            py,
-            &source,
-            &file_name,
-            &module_name,
-        )?;
+        let module = PyModule::from_code(py, &source, &file_name, &module_name)?;
 
         Ok(Self {
             id: script.id,
@@ -134,7 +135,11 @@ impl ScriptInstance {
     }
 
     /// Call the _ready function if it exists
-    pub fn call_ready(&mut self, py: Python<'_>, context: &Bound<'_, PyDict>) -> Result<(), ScriptError> {
+    pub fn call_ready(
+        &mut self,
+        py: Python<'_>,
+        context: &Bound<'_, PyDict>,
+    ) -> Result<(), ScriptError> {
         if self.ready_called {
             return Ok(());
         }
@@ -149,7 +154,12 @@ impl ScriptInstance {
     }
 
     /// Call the _update function if it exists
-    pub fn call_update(&self, py: Python<'_>, context: &Bound<'_, PyDict>, delta: f32) -> Result<(), ScriptError> {
+    pub fn call_update(
+        &self,
+        py: Python<'_>,
+        context: &Bound<'_, PyDict>,
+        delta: f32,
+    ) -> Result<(), ScriptError> {
         let module = self.module.bind(py);
         if let Ok(update_fn) = module.getattr("_update") {
             update_fn.call1((context, delta))?;
@@ -158,7 +168,12 @@ impl ScriptInstance {
     }
 
     /// Call the _physics_update function if it exists
-    pub fn call_physics_update(&self, py: Python<'_>, context: &Bound<'_, PyDict>, delta: f32) -> Result<(), ScriptError> {
+    pub fn call_physics_update(
+        &self,
+        py: Python<'_>,
+        context: &Bound<'_, PyDict>,
+        delta: f32,
+    ) -> Result<(), ScriptError> {
         let module = self.module.bind(py);
         if let Ok(physics_fn) = module.getattr("_physics_update") {
             physics_fn.call1((context, delta))?;
@@ -168,13 +183,19 @@ impl ScriptInstance {
 
     /// Call a custom function by name
     #[allow(dead_code)]
-    pub fn call_function<'py, A>(&self, py: Python<'py>, name: &str, args: A) -> Result<Bound<'py, PyAny>, ScriptError>
+    pub fn call_function<'py, A>(
+        &self,
+        py: Python<'py>,
+        name: &str,
+        args: A,
+    ) -> Result<Bound<'py, PyAny>, ScriptError>
     where
         A: IntoPyObject<'py>,
         A::Error: std::fmt::Debug,
     {
         let module = self.module.bind(py);
-        let func = module.getattr(name)
+        let func = module
+            .getattr(name)
             .map_err(|_| ScriptError::NotFound(name.to_string()))?;
         let result = func.call1((args,))?;
         Ok(result)

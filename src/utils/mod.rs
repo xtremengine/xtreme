@@ -11,5 +11,5 @@
 mod pool;
 mod timer;
 
-pub use pool::{Pool, Handle};
-pub use timer::{Timer, DeltaTime, FixedTimestep};
+pub use pool::{Handle, Pool};
+pub use timer::{DeltaTime, FixedTimestep, Timer};

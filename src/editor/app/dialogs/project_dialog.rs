@@ -29,13 +29,22 @@ impl EditorApp {
                 ui.push_id("project_dialog_content", |ui| {
                     // Tab bar
                     ui.horizontal(|ui| {
-                        if ui.selectable_label(self.project_dialog_tab == 0, "General").clicked() {
+                        if ui
+                            .selectable_label(self.project_dialog_tab == 0, "General")
+                            .clicked()
+                        {
                             self.project_dialog_tab = 0;
                         }
-                        if ui.selectable_label(self.project_dialog_tab == 1, "Build Settings").clicked() {
+                        if ui
+                            .selectable_label(self.project_dialog_tab == 1, "Build Settings")
+                            .clicked()
+                        {
                             self.project_dialog_tab = 1;
                         }
-                        if ui.selectable_label(self.project_dialog_tab == 2, "Window").clicked() {
+                        if ui
+                            .selectable_label(self.project_dialog_tab == 2, "Window")
+                            .clicked()
+                        {
                             self.project_dialog_tab = 2;
                         }
                     });
@@ -64,8 +73,12 @@ impl EditorApp {
                                         ui.end_row();
 
                                         ui.label("Description:");
-                                        ui.add(egui::TextEdit::multiline(&mut project.config.description)
-                                            .desired_rows(4));
+                                        ui.add(
+                                            egui::TextEdit::multiline(
+                                                &mut project.config.description,
+                                            )
+                                            .desired_rows(4),
+                                        );
                                         ui.end_row();
                                     });
                             });
@@ -95,24 +108,32 @@ impl EditorApp {
                                     .spacing([10.0, 8.0])
                                     .show(ui, |ui| {
                                         ui.label("Width:");
-                                        ui.add(egui::DragValue::new(&mut project.config.window_width)
-                                            .range(320..=3840)
-                                            .suffix(" px")
-                                            .fixed_decimals(0));
+                                        ui.add(
+                                            egui::DragValue::new(&mut project.config.window_width)
+                                                .range(320..=3840)
+                                                .suffix(" px")
+                                                .fixed_decimals(0),
+                                        );
                                         ui.end_row();
 
                                         ui.label("Height:");
-                                        ui.add(egui::DragValue::new(&mut project.config.window_height)
-                                            .range(240..=2160)
-                                            .suffix(" px")
-                                            .fixed_decimals(0));
+                                        ui.add(
+                                            egui::DragValue::new(&mut project.config.window_height)
+                                                .range(240..=2160)
+                                                .suffix(" px")
+                                                .fixed_decimals(0),
+                                        );
                                         ui.end_row();
 
                                         ui.label("Target FPS:");
                                         ui.horizontal(|ui| {
-                                            ui.add(egui::DragValue::new(&mut project.config.target_fps)
+                                            ui.add(
+                                                egui::DragValue::new(
+                                                    &mut project.config.target_fps,
+                                                )
                                                 .range(-1..=240)
-                                                .fixed_decimals(0));
+                                                .fixed_decimals(0),
+                                            );
                                             if project.config.target_fps == -1 {
                                                 ui.label("(unlimited)");
                                             }
@@ -134,16 +155,21 @@ impl EditorApp {
                                             project.config.background_color[2],
                                         );
                                         if ui.color_edit_button_srgba(&mut color).changed() {
-                                            project.config.background_color = [color.r(), color.g(), color.b()];
+                                            project.config.background_color =
+                                                [color.r(), color.g(), color.b()];
                                         }
                                         ui.end_row();
 
                                         ui.label("Splash Duration:");
-                                        ui.add(egui::DragValue::new(&mut project.config.splash_duration)
+                                        ui.add(
+                                            egui::DragValue::new(
+                                                &mut project.config.splash_duration,
+                                            )
                                             .range(0.0..=10.0)
                                             .speed(0.1)
                                             .suffix(" s")
-                                            .fixed_decimals(1));
+                                            .fixed_decimals(1),
+                                        );
                                         ui.end_row();
                                     });
 

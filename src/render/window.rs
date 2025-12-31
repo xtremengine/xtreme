@@ -138,10 +138,7 @@ struct AppHandler<A: App> {
 /// Load window icon from file
 fn load_icon() -> Option<Icon> {
     // Try to load icon from assets folder
-    let icon_paths = [
-        "assets/icon.ico",
-        "assets/xtreme-logo.png",
-    ];
+    let icon_paths = ["assets/icon.ico", "assets/xtreme-logo.png"];
 
     for path in &icon_paths {
         if let Ok(img) = image::open(path) {
@@ -195,7 +192,8 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
         let main_window_id = self.window.as_ref().map(|w| w.id());
         if main_window_id.is_some() && Some(window_id) != main_window_id {
             // This is a secondary window event
-            self.app.secondary_window_event(event_loop, window_id, &event);
+            self.app
+                .secondary_window_event(event_loop, window_id, &event);
             return;
         }
 
@@ -204,7 +202,10 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
             if self.app.raw_event(window, &event) {
                 // Event was consumed by app (e.g., egui), skip normal processing
                 // But still handle close and redraw
-                if matches!(event, WindowEvent::CloseRequested | WindowEvent::RedrawRequested) {
+                if matches!(
+                    event,
+                    WindowEvent::CloseRequested | WindowEvent::RedrawRequested
+                ) {
                     // Fall through to normal handling
                 } else {
                     return;
@@ -225,9 +226,7 @@ impl<A: App> ApplicationHandler for AppHandler<A> {
 
             WindowEvent::KeyboardInput {
                 event: KeyEvent {
-                    logical_key,
-                    state,
-                    ..
+                    logical_key, state, ..
                 },
                 ..
             } => {

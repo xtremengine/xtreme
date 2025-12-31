@@ -19,7 +19,9 @@ impl EditorApp {
                     }
                 }
                 FileDialogAction::Save | FileDialogAction::SaveAs => {
-                    let default_name = self.scene_manager.current_path()
+                    let default_name = self
+                        .scene_manager
+                        .current_path()
                         .and_then(|p| p.file_name())
                         .and_then(|n| n.to_str())
                         .unwrap_or("scene.xtrm")

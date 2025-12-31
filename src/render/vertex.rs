@@ -13,7 +13,11 @@ pub struct Vertex {
 
 impl Vertex {
     pub fn new(position: [f32; 3], normal: [f32; 3], uv: [f32; 2]) -> Self {
-        Self { position, normal, uv }
+        Self {
+            position,
+            normal,
+            uv,
+        }
     }
 }
 
@@ -40,9 +44,18 @@ impl Vertex {
         VertexLayout {
             stride: std::mem::size_of::<Vertex>() as u64,
             attributes: vec![
-                VertexAttribute { offset: 0, format: VertexFormat::Float32x3 },
-                VertexAttribute { offset: 12, format: VertexFormat::Float32x3 },
-                VertexAttribute { offset: 24, format: VertexFormat::Float32x2 },
+                VertexAttribute {
+                    offset: 0,
+                    format: VertexFormat::Float32x3,
+                },
+                VertexAttribute {
+                    offset: 12,
+                    format: VertexFormat::Float32x3,
+                },
+                VertexAttribute {
+                    offset: 24,
+                    format: VertexFormat::Float32x2,
+                },
             ],
         }
     }

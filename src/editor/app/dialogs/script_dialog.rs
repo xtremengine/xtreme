@@ -1,7 +1,7 @@
 //! Script creation and attachment dialogs.
 
-use std::path::PathBuf;
 use crate::editor::app::EditorApp;
+use std::path::PathBuf;
 
 impl EditorApp {
     /// Draw script creation dialog (opens native file save dialog)
@@ -51,10 +51,16 @@ impl EditorApp {
                 if let Some(obj_id) = self.selection.first() {
                     match self.script_runtime.attach_script(path.clone(), obj_id) {
                         Ok(script_id) => {
-                            if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == obj_id) {
+                            if let Some(obj) =
+                                self.scene_objects.iter_mut().find(|o| o.id == obj_id)
+                            {
                                 obj.scripts.push(script_id);
                             }
-                            log::info!("Created and attached script {:?} to object {}", path, obj_id);
+                            log::info!(
+                                "Created and attached script {:?} to object {}",
+                                path,
+                                obj_id
+                            );
                         }
                         Err(e) => {
                             log::error!("Failed to attach script: {}", e);
@@ -88,10 +94,7 @@ impl EditorApp {
 
         #[cfg(target_os = "macos")]
         {
-            if let Err(e) = std::process::Command::new("open")
-                .arg(path)
-                .spawn()
-            {
+            if let Err(e) = std::process::Command::new("open").arg(path).spawn() {
                 log::error!("Failed to open file in editor: {}", e);
             } else {
                 log::info!("Opened {:?} in default editor", path);
@@ -100,10 +103,7 @@ impl EditorApp {
 
         #[cfg(target_os = "linux")]
         {
-            if let Err(e) = std::process::Command::new("xdg-open")
-                .arg(path)
-                .spawn()
-            {
+            if let Err(e) = std::process::Command::new("xdg-open").arg(path).spawn() {
                 log::error!("Failed to open file in editor: {}", e);
             } else {
                 log::info!("Opened {:?} in default editor", path);
@@ -119,11 +119,13 @@ impl EditorApp {
             self.ensure_xtreme_module(parent);
         }
 
-        let script_name = path.file_stem()
+        let script_name = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("script");
 
-        let template = format!(r#"# {}
+        let template = format!(
+            r#"# {}
 # Xtreme Engine Script
 
 import xtreme
@@ -139,7 +141,9 @@ def _update(ctx, delta):
 def _physics_update(ctx, delta):
     """Called at fixed physics rate (optional)"""
     pass
-"#, script_name, script_name);
+"#,
+            script_name, script_name
+        );
 
         match std::fs::write(path, template) {
             Ok(_) => log::info!("Created script: {:?}", path),
@@ -301,7 +305,9 @@ def log_error(message: str) -> None: ...
                 if let Some(obj_id) = self.selection.first() {
                     match self.script_runtime.attach_script(path.clone(), obj_id) {
                         Ok(script_id) => {
-                            if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == obj_id) {
+                            if let Some(obj) =
+                                self.scene_objects.iter_mut().find(|o| o.id == obj_id)
+                            {
                                 obj.scripts.push(script_id);
                             }
                             log::info!("Attached script {:?} to object {}", path, obj_id);

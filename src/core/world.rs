@@ -21,9 +21,9 @@ use std::any::TypeId;
 
 use super::archetype::{ArchetypeId, ArchetypeStorage, ComponentSet};
 use super::component::{Component, ComponentRegistry, SparseSet};
-use super::entity::{Entity, EntityManager, Generation};
 #[allow(unused_imports)]
 use super::entity::Generation as _Gen;
+use super::entity::{Entity, EntityManager, Generation};
 
 /// The central container for all ECS data.
 ///
@@ -61,7 +61,8 @@ impl World {
     /// Spawn a new entity with no components
     pub fn spawn_empty(&mut self) -> Entity {
         let entity = self.entities.spawn();
-        self.archetypes.assign_entity(entity.index(), ArchetypeId::EMPTY);
+        self.archetypes
+            .assign_entity(entity.index(), ArchetypeId::EMPTY);
         entity
     }
 
@@ -286,7 +287,9 @@ impl<'w> EntityBuilder<'w> {
         // Set up archetype
         let set = ComponentSet::from_types(self.component_types);
         let arch_id = self.world.archetypes.get_or_create(set);
-        self.world.archetypes.assign_entity(self.entity.index(), arch_id);
+        self.world
+            .archetypes
+            .assign_entity(self.entity.index(), arch_id);
         self.entity
     }
 }
@@ -303,11 +306,17 @@ mod tests {
     use super::*;
 
     #[derive(Debug, PartialEq, Clone)]
-    struct Position { x: f32, y: f32 }
+    struct Position {
+        x: f32,
+        y: f32,
+    }
     impl Component for Position {}
 
     #[derive(Debug, PartialEq, Clone)]
-    struct Velocity { dx: f32, dy: f32 }
+    struct Velocity {
+        dx: f32,
+        dy: f32,
+    }
     impl Component for Velocity {}
 
     #[test]

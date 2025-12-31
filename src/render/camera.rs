@@ -42,11 +42,12 @@ impl IsometricCamera {
         let cos_yaw = self.yaw.cos();
         let sin_yaw = self.yaw.sin();
 
-        self.target + Vec3::new(
-            self.distance * cos_pitch * sin_yaw,
-            self.distance * sin_pitch,
-            self.distance * cos_pitch * cos_yaw,
-        )
+        self.target
+            + Vec3::new(
+                self.distance * cos_pitch * sin_yaw,
+                self.distance * sin_pitch,
+                self.distance * cos_pitch * cos_yaw,
+            )
     }
 
     /// Get camera position (alias for eye_position)
@@ -74,7 +75,14 @@ impl Camera for IsometricCamera {
     fn projection_matrix(&self) -> Mat4 {
         let half_width = self.zoom * self.aspect_ratio;
         let half_height = self.zoom;
-        Mat4::orthographic_rh(-half_width, half_width, -half_height, half_height, 0.1, 1000.0)
+        Mat4::orthographic_rh(
+            -half_width,
+            half_width,
+            -half_height,
+            half_height,
+            0.1,
+            1000.0,
+        )
     }
 }
 

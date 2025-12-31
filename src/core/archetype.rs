@@ -273,7 +273,10 @@ impl ArchetypeStorage {
     }
 
     /// Iterate all archetypes matching a component filter
-    pub fn iter_matching<'a>(&'a self, required: &'a ComponentSet) -> impl Iterator<Item = &'a Archetype> {
+    pub fn iter_matching<'a>(
+        &'a self,
+        required: &'a ComponentSet,
+    ) -> impl Iterator<Item = &'a Archetype> {
         self.archetypes
             .iter()
             .filter(move |arch| arch.components().contains_all(required))
