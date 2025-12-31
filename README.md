@@ -2,7 +2,7 @@
 
 A modular ECS game engine with isometric 3D rendering and ML-powered AI, built in Rust.
 
-[![CI](https://github.com/your-username/xtreme-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/xtreme-engine/actions/workflows/ci.yml)
+[![CI](https://github.com/xtremengine/xtreme/actions/workflows/ci.yml/badge.svg)](https://github.com/xtremengine/xtreme/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
 
