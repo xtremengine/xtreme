@@ -1,5 +1,7 @@
 //! Editor UI: main drawing coordination and panel layout.
 
+use std::path::Path;
+
 use glam::Vec3;
 
 use super::state::InputModifiers;
@@ -9,6 +11,87 @@ use crate::editor::panels::{AssetAction, HierarchyAction, Tool, ToolbarAction};
 use crate::editor::selection::SceneObject;
 #[allow(unused_imports)]
 use crate::render::IsometricCamera;
+
+/// Template for new WGSL shader files
+const SHADER_TEMPLATE: &str = r#"// Xtreme Engine Shader
+// Vertex and Fragment shader template
+
+struct Uniforms {
+    view_proj: mat4x4<f32>,
+    model: mat4x4<f32>,
+    color: vec4<f32>,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+struct VertexInput {
+    @location(0) position: vec3<f32>,
+    @location(1) normal: vec3<f32>,
+    @location(2) uv: vec2<f32>,
+}
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) world_normal: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+@vertex
+fn vs_main(in: VertexInput) -> VertexOutput {
+    var out: VertexOutput;
+    out.clip_position = uniforms.view_proj * uniforms.model * vec4(in.position, 1.0);
+    out.world_normal = (uniforms.model * vec4(in.normal, 0.0)).xyz;
+    out.uv = in.uv;
+    out.color = uniforms.color;
+    return out;
+}
+
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    // Simple diffuse lighting
+    let light_dir = normalize(vec3(0.3, 1.0, 0.5));
+    let ambient = 0.3;
+    let diffuse = max(dot(normalize(in.world_normal), light_dir), 0.0);
+    let lighting = ambient + diffuse * 0.7;
+
+    return vec4(in.color.rgb * lighting, in.color.a);
+}
+"#;
+
+/// Template for new Python script files
+const SCRIPT_TEMPLATE: &str = r#"# Xtreme Engine Script
+# Lifecycle methods: _ready(ctx), _update(ctx, delta), _physics_update(ctx, delta)
+
+speed = 5.0
+
+def _ready(ctx):
+    """Called once when the script is attached to an object."""
+    print(f"Script ready on object {ctx['object_id']}")
+
+def _update(ctx, delta):
+    """Called every frame."""
+    transform = ctx['transform']
+
+    # Example: move forward over time
+    # transform['position'][2] -= speed * delta
+
+    return {'transform': transform}
+
+def _physics_update(ctx, delta):
+    """Called at fixed physics rate."""
+    pass
+"#;
+
+/// Template for new scene files
+const SCENE_TEMPLATE: &str = r#"SceneData(
+    version: 2,
+    name: "New Scene",
+    camera_target: Some((0.0, 0.0, 0.0)),
+    camera_distance: Some(15.0),
+    objects: [],
+)
+"#;
 
 /// Simple pseudo-random float [0, 1)
 pub fn rand_float() -> f32 {
@@ -204,8 +287,71 @@ impl EditorApp {
                     self.asset_browser.refresh();
                 }
             }
+            AssetAction::CreateShader(dir) => {
+                self.create_new_asset(&dir, "new_shader.wgsl", SHADER_TEMPLATE);
+            }
+            AssetAction::CreateScript(dir) => {
+                self.create_new_asset(&dir, "new_script.py", SCRIPT_TEMPLATE);
+            }
+            AssetAction::CreateScene(dir) => {
+                self.create_new_asset(&dir, "new_scene.ron", SCENE_TEMPLATE);
+            }
+            AssetAction::CreateTexture(_) => {
+                // Textures should be imported, not created
+                log::info!("Import textures using external tools");
+            }
             AssetAction::OpenDirectory(_) => {}
             AssetAction::None => {}
+        }
+    }
+
+    /// Create a new asset file with the given template
+    fn create_new_asset(&mut self, dir: &Path, default_name: &str, template: &str) {
+        // Find a unique filename
+        let mut counter = 0;
+        let mut file_path = dir.join(default_name);
+
+        while file_path.exists() {
+            counter += 1;
+            let ext = Path::new(default_name)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("");
+            let stem = Path::new(default_name)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("new_file");
+            let new_name = if ext.is_empty() {
+                format!("{}_{}", stem, counter)
+            } else {
+                format!("{}_{}.{}", stem, counter, ext)
+            };
+            file_path = dir.join(new_name);
+        }
+
+        // Write the template to the file
+        match std::fs::write(&file_path, template) {
+            Ok(()) => {
+                log::info!("Created new asset: {}", file_path.display());
+                self.asset_browser.refresh();
+
+                // Open the file in system editor for immediate editing
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = std::process::Command::new("cmd")
+                        .args(["/C", "start", "", &file_path.to_string_lossy()])
+                        .spawn();
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    let _ = std::process::Command::new("xdg-open")
+                        .arg(&file_path)
+                        .spawn();
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to create asset {}: {}", file_path.display(), e);
+            }
         }
     }
 

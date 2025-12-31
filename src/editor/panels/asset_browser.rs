@@ -13,6 +13,7 @@ pub enum AssetType {
     Prefab,
     Texture,
     Script,
+    Shader,
     Unknown,
 }
 
@@ -25,6 +26,7 @@ impl AssetType {
             AssetType::Prefab => "[P]",
             AssetType::Texture => "[T]",
             AssetType::Script => "[#]",
+            AssetType::Shader => "[>]",
             AssetType::Unknown => "[?]",
         }
     }
@@ -32,10 +34,11 @@ impl AssetType {
     /// Detect type from file extension
     pub fn from_extension(ext: &str) -> Self {
         match ext.to_lowercase().as_str() {
-            "ron" | "json" => AssetType::Scene,
+            "ron" | "json" | "xtrm" => AssetType::Scene,
             "xpfb" => AssetType::Prefab,
             "png" | "jpg" | "jpeg" | "bmp" | "tga" => AssetType::Texture,
             "py" => AssetType::Script,
+            "wgsl" | "glsl" | "hlsl" => AssetType::Shader,
             _ => AssetType::Unknown,
         }
     }
@@ -54,6 +57,7 @@ pub struct AssetEntry {
 
 /// Actions returned by the asset browser
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub enum AssetAction {
     None,
     OpenScene(PathBuf),
@@ -63,6 +67,10 @@ pub enum AssetAction {
     OpenScript(PathBuf),
     ShowInExplorer(PathBuf),
     Delete(PathBuf),
+    CreateShader(PathBuf),
+    CreateTexture(PathBuf),
+    CreateScript(PathBuf),
+    CreateScene(PathBuf),
 }
 
 /// Asset browser panel
@@ -223,10 +231,46 @@ impl AssetBrowser {
         ui.separator();
 
         // Content area with scroll
-        egui::ScrollArea::vertical()
+        let _scroll_response = egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 let filter_lower = self.filter.to_lowercase();
+
+                // Background context menu for creating new assets
+                let bg_response = ui.interact(
+                    ui.available_rect_before_wrap(),
+                    egui::Id::new("asset_browser_bg"),
+                    egui::Sense::click(),
+                );
+
+                bg_response.context_menu(|ui| {
+                    ui.menu_button("Create New", |ui| {
+                        if ui.button("Shader (.wgsl)").clicked() {
+                            action = AssetAction::CreateShader(self.current_path.clone());
+                            ui.close();
+                        }
+                        if ui.button("Script (.py)").clicked() {
+                            action = AssetAction::CreateScript(self.current_path.clone());
+                            ui.close();
+                        }
+                        if ui.button("Scene (.ron)").clicked() {
+                            action = AssetAction::CreateScene(self.current_path.clone());
+                            ui.close();
+                        }
+                    });
+
+                    ui.separator();
+
+                    if ui.button("Show in Explorer").clicked() {
+                        action = AssetAction::ShowInExplorer(self.current_path.clone());
+                        ui.close();
+                    }
+
+                    if ui.button("Refresh").clicked() {
+                        self.needs_refresh = true;
+                        ui.close();
+                    }
+                });
 
                 for (i, entry) in self.entries.iter().enumerate() {
                     // Apply filter
@@ -256,7 +300,7 @@ impl AssetBrowser {
                             AssetType::Prefab => {
                                 action = AssetAction::LoadPrefab(entry.path.clone());
                             }
-                            AssetType::Script => {
+                            AssetType::Script | AssetType::Shader => {
                                 action = AssetAction::OpenScript(entry.path.clone());
                             }
                             AssetType::Texture => {
@@ -295,6 +339,12 @@ impl AssetBrowser {
                             }
                             AssetType::Script => {
                                 if ui.button("Open in Editor").clicked() {
+                                    action = AssetAction::OpenScript(entry.path.clone());
+                                    ui.close();
+                                }
+                            }
+                            AssetType::Shader => {
+                                if ui.button("Edit Shader").clicked() {
                                     action = AssetAction::OpenScript(entry.path.clone());
                                     ui.close();
                                 }

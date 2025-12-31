@@ -18,7 +18,9 @@ A modular ECS game engine with isometric 3D rendering and ML-powered AI, built i
 ### Rendering (WGPU)
 - **Cross-Platform**: Vulkan, DirectX 12, Metal, WebGPU backends
 - **Isometric Camera**: Orthographic projection with configurable angle
-- **Material System**: Shader and texture management
+- **Material System**: Shader and texture management with PBR support
+- **Texture Rendering**: Full texture pipeline with caching and alpha blending
+- **WGSL Shaders**: Custom shaders for basic and textured rendering
 - **Mesh Primitives**: Cubes, spheres, planes, and custom geometry
 - **Egui Integration**: Immediate mode UI for editor and debug
 - **Camera Components**: Per-entity cameras with perspective/orthographic projection
@@ -651,11 +653,13 @@ cargo doc --open
 - [x] Python Scripting Integration
 - [x] Camera Component System
 - [x] Play Mode
+- [x] WGPU Rendering Pipeline
+- [x] WGSL Shaders (basic + textured)
+- [x] Texture/Material Loading with Alpha Blending
+- [x] Resizable Asset Browser Panel
 
 ### In Progress
-- [ ] Complete WGPU rendering pipeline
-- [ ] WGSL Shaders
-- [ ] Texture/Material loading
+- [ ] Asset Creation Tools (shaders, textures)
 
 ### Planned
 - [ ] Instanced mesh rendering
