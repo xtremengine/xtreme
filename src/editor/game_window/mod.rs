@@ -6,13 +6,21 @@ mod camera;
 mod render;
 mod splash;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 use winit::window::WindowAttributes;
 
 use crate::editor::selection::SceneObject;
-use crate::render::{EguiIntegration, GpuMesh, Mesh, RenderContext, Uniforms};
+use crate::render::{EguiIntegration, GpuMesh, Mesh, RenderContext, Texture, Uniforms};
+
+/// Cached texture for game window
+pub(crate) struct GameTexture {
+    #[allow(dead_code)]
+    pub texture: Texture,
+    pub bind_group: wgpu::BindGroup,
+}
 
 /// Maximum number of objects that can be rendered
 pub(crate) const MAX_OBJECTS: usize = 1024;
@@ -55,11 +63,16 @@ pub struct GameWindow {
     pub(crate) ctx: RenderContext,
     /// Aspect ratio
     pub(crate) aspect_ratio: f32,
-    /// Mesh pipeline
+    /// Mesh pipeline (no texture)
     pub(crate) mesh_pipeline: wgpu::RenderPipeline,
+    /// Textured mesh pipeline
+    pub(crate) textured_pipeline: wgpu::RenderPipeline,
     /// Mesh bind group layout
     #[allow(dead_code)]
     pub(crate) mesh_bind_group_layout: wgpu::BindGroupLayout,
+    /// Texture bind group layout
+    #[allow(dead_code)]
+    pub(crate) texture_bind_group_layout: wgpu::BindGroupLayout,
     /// Mesh uniform buffer
     pub(crate) mesh_uniform_buffer: wgpu::Buffer,
     /// Mesh bind group
@@ -92,6 +105,8 @@ pub struct GameWindow {
     pub(crate) fps_samples: Vec<f32>,
     /// Current smoothed FPS
     pub(crate) current_fps: f32,
+    /// Texture cache
+    pub(crate) texture_cache: HashMap<String, GameTexture>,
 }
 
 impl GameWindow {
@@ -225,7 +240,7 @@ impl GameWindow {
                 vertex: wgpu::VertexState {
                     module: &mesh_shader,
                     entry_point: Some("vs_main"),
-                    buffers: &[vertex_buffer_layout],
+                    buffers: std::slice::from_ref(&vertex_buffer_layout),
                     compilation_options: Default::default(),
                 },
                 fragment: Some(wgpu::FragmentState {
@@ -233,7 +248,68 @@ impl GameWindow {
                     entry_point: Some("fs_main"),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: ctx.format(),
-                        blend: Some(wgpu::BlendState::REPLACE),
+                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: Default::default(),
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    cull_mode: Some(wgpu::Face::Back),
+                    ..Default::default()
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth32Float,
+                    depth_write_enabled: true,
+                    depth_compare: wgpu::CompareFunction::Less,
+                    stencil: wgpu::StencilState::default(),
+                    bias: wgpu::DepthBiasState::default(),
+                }),
+                multisample: wgpu::MultisampleState::default(),
+                multiview: None,
+                cache: None,
+            });
+
+        // Create textured shader
+        let textured_shader = ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Game Textured Shader"),
+                source: wgpu::ShaderSource::Wgsl(
+                    include_str!("../../shaders/textured_simple.wgsl").into(),
+                ),
+            });
+
+        // Create texture bind group layout
+        let texture_bind_group_layout = Texture::bind_group_layout(&ctx.device);
+
+        // Create textured pipeline layout
+        let textured_pipeline_layout = ctx
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Game Textured Pipeline Layout"),
+                bind_group_layouts: &[&mesh_bind_group_layout, &texture_bind_group_layout],
+                push_constant_ranges: &[],
+            });
+
+        // Create textured pipeline
+        let textured_pipeline = ctx
+            .device
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("Game Textured Pipeline"),
+                layout: Some(&textured_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &textured_shader,
+                    entry_point: Some("vs_main"),
+                    buffers: &[vertex_buffer_layout],
+                    compilation_options: Default::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &textured_shader,
+                    entry_point: Some("fs_main"),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: ctx.format(),
+                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
                     compilation_options: Default::default(),
@@ -275,12 +351,31 @@ impl GameWindow {
             None
         };
 
+        // Preload textures for scene objects
+        let mut texture_cache = HashMap::new();
+        for obj in &scene_objects {
+            if let Some(ref path) = obj.texture_path {
+                if !texture_cache.contains_key(path) {
+                    if let Ok(texture) = Texture::from_file(&ctx.device, &ctx.queue, path) {
+                        let bind_group =
+                            texture.create_bind_group(&ctx.device, &texture_bind_group_layout);
+                        texture_cache.insert(path.clone(), GameTexture { texture, bind_group });
+                        log::info!("Game: Loaded texture {}", path);
+                    } else {
+                        log::warn!("Game: Failed to load texture {}", path);
+                    }
+                }
+            }
+        }
+
         Ok(Self {
             window,
             ctx,
             aspect_ratio,
             mesh_pipeline,
+            textured_pipeline,
             mesh_bind_group_layout,
+            texture_bind_group_layout,
             mesh_uniform_buffer,
             mesh_bind_group,
             uniform_alignment,
@@ -297,6 +392,7 @@ impl GameWindow {
             splash_texture,
             fps_samples: Vec::with_capacity(60),
             current_fps: 60.0,
+            texture_cache,
         })
     }
 

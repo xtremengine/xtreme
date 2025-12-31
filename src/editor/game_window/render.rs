@@ -183,15 +183,36 @@ impl GameWindow {
             occlusion_query_set: None,
         });
 
-        pass.set_pipeline(&self.mesh_pipeline);
-
         for (i, obj) in self.scene_objects.iter().take(num_objects).enumerate() {
             if !obj.visible {
                 continue;
             }
 
             let dynamic_offset = i as u32 * aligned_size;
-            pass.set_bind_group(0, &self.mesh_bind_group, &[dynamic_offset]);
+
+            // Check if object has texture
+            let has_texture = obj
+                .texture_path
+                .as_ref()
+                .map(|p| self.texture_cache.contains_key(p))
+                .unwrap_or(false);
+
+            if has_texture {
+                // Use textured pipeline
+                pass.set_pipeline(&self.textured_pipeline);
+                pass.set_bind_group(0, &self.mesh_bind_group, &[dynamic_offset]);
+
+                // Set texture bind group
+                let texture_path = obj.texture_path.as_ref().unwrap();
+                if let Some(cached) = self.texture_cache.get(texture_path) {
+                    pass.set_bind_group(1, &cached.bind_group, &[]);
+                }
+            } else {
+                // Use basic pipeline (no texture)
+                pass.set_pipeline(&self.mesh_pipeline);
+                pass.set_bind_group(0, &self.mesh_bind_group, &[dynamic_offset]);
+            }
+
             self.cube_mesh.draw(&mut pass);
         }
     }
