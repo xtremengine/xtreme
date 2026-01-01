@@ -227,6 +227,7 @@ impl GameWindow {
             visible: bool,
             texture_path: Option<String>,
             shader_path: Option<String>,
+            mesh_path: Option<String>,
         }
 
         let objects_data: Vec<ObjectData> = self
@@ -239,6 +240,7 @@ impl GameWindow {
                 visible: obj.visible,
                 texture_path: obj.texture_path.clone(),
                 shader_path: obj.shader_path.clone(),
+                mesh_path: obj.mesh_path.clone(),
             })
             .collect();
 
@@ -320,7 +322,16 @@ impl GameWindow {
                 pass.set_bind_group(0, &self.mesh_bind_group, &[dynamic_offset]);
             }
 
-            self.cube_mesh.draw(&mut pass);
+            // Draw the correct mesh (custom mesh or fallback to cube)
+            if let Some(ref mesh_path) = obj.mesh_path {
+                if let Some(gpu_mesh) = self.mesh_cache.get(mesh_path) {
+                    gpu_mesh.draw(&mut pass);
+                } else {
+                    self.cube_mesh.draw(&mut pass);
+                }
+            } else {
+                self.cube_mesh.draw(&mut pass);
+            }
         }
     }
 

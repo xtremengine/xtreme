@@ -19,15 +19,20 @@
 
   Prioridade Média (Editor)
 
-  4. Prefab System Avançado
-    - Nested prefabs
-    - Prefab variants/overrides
-  5. Timeline/Sequencer
-    - Edição de animações no editor
-    - Cutscenes
-  6. Console/Debug Log
-    - Painel de logs no editor
-    - Filtros por categoria
+  4. ~~Prefab System Avançado~~ ✅ IMPLEMENTADO
+    - ~~Nested prefabs~~ (com detecção de referência circular)
+    - ~~Prefab variants/overrides~~ (property-level overrides)
+    - ~~Registry com caching e hot reload~~
+    - ~~Serialização com scene/project~~
+  5. ~~Timeline/Sequencer~~ ✅ IMPLEMENTADO
+    - ~~Edição de animações no editor~~ (TimelinePanel)
+    - ~~Cutscenes~~ (CutsceneBuilder, dialogue, events)
+    - ~~Tracks para bones, objects, camera, events~~
+    - ~~Keyframe interpolation com easing~~
+  6. ~~Console/Debug Log~~ ✅ IMPLEMENTADO
+    - ~~Painel de logs no editor~~ (ConsolePanel)
+    - ~~Filtros por categoria~~ (Error, Warn, Info, Debug)
+    - ~~Busca textual e copy to clipboard~~
 
   Prioridade Baixa (Nice to Have)
 
@@ -43,5 +48,3 @@
     - Tone mapping
     - FXAA
 
-  ---
-  Qual feature você gostaria de implementar primeiro?

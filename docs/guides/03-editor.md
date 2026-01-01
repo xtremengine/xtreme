@@ -12,9 +12,9 @@ cargo run --example editor
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  File  Edit  Object  View  Help                          [Menu]│
+│  File  Edit  Object  View  Help                          [Menu] │
 ├─────────────────────────────────────────────────────────────────┤
-│  [Select] [Move] [Rotate] [Scale] | Snap: [X] | Grid: 1.0      │
+│  [Select] [Move] [Rotate] [Scale] | Snap: [X] | Grid: 1.0       │
 ├──────────────┬──────────────────────────────┬───────────────────┤
 │              │                              │                   │
 │  Hierarchy   │       3D Viewport            │    Inspector      │
@@ -24,11 +24,17 @@ cargo run --example editor
 │    - Player  │                              │  Rotation: x y z  │
 │    - Camera  │                              │  Scale:    x y z  │
 │              │                              │                   │
-│              │                              │  Components       │
-│              │                              │  [+ Add]          │
+│ ─────────────│                              │  Components       │
+│  Asset       │                              │  [+ Add]          │
+│  Browser     │                              │                   │
 ├──────────────┴──────────────────────────────┴───────────────────┤
-│  Asset Browser                                                  │
-│  [assets/] > scenes/ models/ scripts/                          │
+│  Console                                        [E] [W] [I] [D] │
+│  [0.12] E [audio] Failed to load clip...                        │
+│  [1.23] I [editor] Scene saved                                  │
+├─────────────────────────────────────────────────────────────────┤
+│  Timeline: "Walk Cycle"                  |< << [>] >> >|        │
+│  [Position]  [◆]────[◆]────[◆]                                │
+│  [Rotation]  [◆]──────────[◆]                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -441,3 +447,223 @@ Basic animation component for future skeletal animation support.
 - **Current State**: Animation state name
 - **Speed**: Playback speed multiplier
 - **Playing**: Enable/disable playback
+
+## Console Panel
+
+Debug log panel for viewing engine and game logs.
+
+### Opening the Console
+
+The console panel is visible at the bottom of the editor.
+
+### Console Features
+
+**Level Filters:**
+- **E**: Show Error messages (red)
+- **W**: Show Warning messages (yellow)
+- **I**: Show Info messages (default)
+- **D**: Show Debug messages (verbose)
+
+**Search:**
+- Type in the filter box to search log messages
+- Matches message text, target module, and category
+
+**Actions:**
+- **Clear**: Remove all log entries
+- **Copy**: Copy all visible logs to clipboard
+
+### Log Categories
+
+| Category | Description |
+|----------|-------------|
+| Engine | Core engine messages |
+| Editor | Editor UI and tools |
+| Render | Graphics and shaders |
+| Audio | Sound playback |
+| Script | Python scripting |
+| User | Custom game logs |
+
+### Example Log Output
+
+```
+[0.12] E [xtreme::audio] Failed to load clip: not_found.wav
+[0.45] W [xtreme::editor] Object has no parent
+[1.23] I [xtreme::editor] Scene saved: level1.xtrm
+[2.00] D [xtreme::render] Shader compiled successfully
+```
+
+## Advanced Prefab System
+
+Prefabs now support nested prefabs and property-level overrides.
+
+### Property Overrides
+
+When you modify a property of a prefab instance:
+- The property is marked as **overridden** (shown in bold/yellow in Inspector)
+- Other properties continue to update from the original prefab
+- Use **Revert to Prefab** to restore the original value
+
+**Override Workflow:**
+1. Place a prefab instance in the scene
+2. Modify any property (position, scale, color, etc.)
+3. The modified property becomes an override
+4. Original prefab changes won't affect overridden properties
+
+### Nested Prefabs
+
+Prefabs can contain other prefabs:
+
+```
+Enemy_Squad.prefab
+├── Leader (reference to Enemy.prefab)
+├── Soldier_1 (reference to Enemy.prefab)
+├── Soldier_2 (reference to Enemy.prefab)
+└── Banner (reference to Flag.prefab)
+```
+
+**Creating Nested Prefabs:**
+1. Create a prefab with objects
+2. Replace any object with a prefab reference
+3. Save the parent prefab
+
+**Benefits:**
+- Reuse common sub-components
+- Update base prefab affects all usages
+- Override properties at any nesting level
+
+### Prefab Registry
+
+The editor maintains a cache of loaded prefabs:
+- Automatic caching for performance
+- Hot reload detection for external changes
+- Circular reference detection prevents infinite loops
+
+### Serialization
+
+Prefab instances are saved with the scene:
+- Prefab reference path
+- Overridden property list
+- Nested prefab mappings
+
+## Timeline Panel
+
+Keyframe animation editor for objects, cameras, and cutscenes.
+
+### Opening Timeline
+
+View > Timeline (or the timeline appears at the bottom of the editor)
+
+### Timeline Interface
+
+```
++============================================================================+
+| Timeline: "Walk Cycle"                              [+] [-] [Loop]         |
++============================================================================+
+| |< << [>] >> >|  00:01.5 / 02:00  [30 FPS v] [Snap: 0.1s] [Zoom: 100%]   |
++----------------------------------------------------------------------------+
+| TRACKS                  |  0.0    0.5    1.0    1.5    2.0   |            |
+|-------------------------|-----|-----|-----|-----|-----|------|            |
+| v [Bone: Spine]         |                                    |            |
+|   [x] Position          |  [◆]----[◆]--------[◆]            |            |
+|   [x] Rotation          |  [◆]--------[◆]----[◆]            |            |
+|-------------------------|-----|-----|-----|-----|-----|------|            |
+| v [Events]              |  [!]           [!]                 |            |
++----------------------------------------------------------------------------+
+| Keyframe: Position @ 0.5s | Value: (0,1.5,0) | Easing: [EaseInOut v]      |
++============================================================================+
+```
+
+### Playback Controls
+
+| Button | Action |
+|--------|--------|
+| `|<` | Go to start |
+| `<<` | Step back one frame |
+| `>` / `||` | Play / Pause |
+| `>>` | Step forward one frame |
+| `>|` | Go to end |
+
+### Track Types
+
+**Object Tracks:**
+- **Position**: Animate object position (Vec3)
+- **Rotation**: Animate object rotation (Vec3 euler or Quat)
+- **Scale**: Animate object scale (Vec3)
+- **Color**: Animate object color (RGBA)
+- **Visibility**: Toggle visibility (bool)
+
+**Camera Tracks:**
+- **Camera Position**: Animate camera location
+- **Camera Target**: Animate camera look-at point
+- **Camera FOV**: Animate field of view
+
+**Skeletal Tracks:**
+- **Bone Translation**: Animate bone position
+- **Bone Rotation**: Animate bone rotation (quaternion)
+- **Bone Scale**: Animate bone scale
+
+**Event Tracks:**
+- **Event**: Trigger named events at specific times
+- **Dialogue**: Display subtitles with speaker and duration
+- **Audio**: Play audio clips at specific times
+
+### Working with Keyframes
+
+**Adding Keyframes:**
+1. Move playhead to desired time
+2. Click `+` on track or press `K`
+3. Set keyframe value
+
+**Editing Keyframes:**
+- Click keyframe diamond to select
+- Drag to move in time
+- Use Inspector to edit value
+
+**Easing Functions:**
+| Easing | Description |
+|--------|-------------|
+| Linear | Constant speed |
+| EaseIn | Slow start |
+| EaseOut | Slow end |
+| EaseInOut | Slow start and end |
+| Step | Instant change at end |
+| CubicBezier | Custom curve |
+
+### Creating Cutscenes
+
+Use the Timeline for cinematic sequences:
+
+1. Create a new sequence
+2. Add camera position/target tracks
+3. Add dialogue events for subtitles
+4. Add audio events for music/sfx
+5. Add trigger events for gameplay
+
+**Cutscene Example:**
+```
+0.0s - Camera starts at overview position
+0.0s - Event: "disable_player_input"
+1.0s - Dialogue: "Hero" - "The castle lies ahead."
+3.0s - Camera moves to castle gate
+5.0s - Event: "open_gate"
+6.0s - Dialogue: "Guard" - "Halt! Who goes there?"
+8.0s - Event: "enable_player_input"
+```
+
+### Timeline Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| Space | Play/Pause |
+| K | Add keyframe |
+| Delete | Delete selected keyframe |
+| Home | Go to start |
+| End | Go to end |
+| +/- | Zoom in/out |
+
+### Serialization
+
+Sequences are saved with the scene in the `sequences` array:
+- Each sequence has name, duration, frame rate
+- Tracks with all keyframes
+- Track groups for organization

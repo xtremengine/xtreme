@@ -48,6 +48,8 @@ pub struct SceneObject {
     pub particle_emitter: Option<ParticleEmitterComponent>,
     /// Animator component (optional)
     pub animator: Option<AnimatorComponent>,
+    /// Mesh file path (for 3D models, e.g., .obj files)
+    pub mesh_path: Option<String>,
 }
 
 impl SceneObject {
@@ -70,6 +72,7 @@ impl SceneObject {
             audio_listener: None,
             particle_emitter: None,
             animator: None,
+            mesh_path: None,
         }
     }
 
@@ -92,6 +95,7 @@ impl SceneObject {
             audio_listener: None,
             particle_emitter: None,
             animator: None,
+            mesh_path: None,
         }
     }
 
@@ -114,6 +118,7 @@ impl SceneObject {
             audio_listener: None,
             particle_emitter: None,
             animator: None,
+            mesh_path: None,
         }
     }
 
@@ -136,6 +141,7 @@ impl SceneObject {
             audio_listener: None,
             particle_emitter: None,
             animator: None,
+            mesh_path: None,
         }
     }
 
@@ -158,6 +164,7 @@ impl SceneObject {
             audio_listener: Some(AudioListenerComponent::default()),
             particle_emitter: None,
             animator: None,
+            mesh_path: None,
         }
     }
 
@@ -180,6 +187,7 @@ impl SceneObject {
             audio_listener: None,
             particle_emitter: Some(ParticleEmitterComponent::with_preset(preset)),
             animator: None,
+            mesh_path: None,
         }
     }
 
@@ -202,6 +210,7 @@ impl SceneObject {
             audio_listener: None,
             particle_emitter: None,
             animator: Some(AnimatorComponent::default()),
+            mesh_path: None,
         }
     }
 

@@ -80,7 +80,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxkbcommon-dev libwayland-dev
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev libasound2-dev
 
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }} --all-features
@@ -142,7 +142,7 @@ jobs:
       - name: Install dependencies (Linux)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxkbcommon-dev libwayland-dev
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev libasound2-dev
 
       - name: Publish to crates.io
         run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}

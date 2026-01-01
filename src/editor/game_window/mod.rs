@@ -130,6 +130,8 @@ pub struct GameWindow {
     pub(crate) particle_entity_map: HashMap<u32, crate::core::Entity>,
     /// Whether audio has been initialized (delayed until after splash)
     pub(crate) audio_initialized: bool,
+    /// Mesh cache for 3D models (path -> GpuMesh)
+    pub(crate) mesh_cache: HashMap<String, GpuMesh>,
 }
 
 impl GameWindow {
@@ -407,6 +409,32 @@ impl GameWindow {
             }
         }
 
+        // Preload meshes for scene objects
+        let mut mesh_cache = HashMap::new();
+        for obj in &scene_objects {
+            if let Some(ref path) = obj.mesh_path {
+                if !mesh_cache.contains_key(path) {
+                    use crate::editor::mesh::load_obj;
+                    use std::path::Path;
+                    if let Ok(loaded_meshes) = load_obj(Path::new(path)) {
+                        if let Some(loaded) = loaded_meshes.into_iter().next() {
+                            let mesh = Mesh::from_raw(
+                                &loaded.positions,
+                                &loaded.normals,
+                                &loaded.texcoords,
+                                loaded.indices,
+                            );
+                            let gpu_mesh = GpuMesh::from_mesh(&ctx.device, &mesh);
+                            mesh_cache.insert(path.clone(), gpu_mesh);
+                            log::info!("Game: Loaded mesh {}", path);
+                        }
+                    } else {
+                        log::warn!("Game: Failed to load mesh {}", path);
+                    }
+                }
+            }
+        }
+
         // Initialize audio manager
         let audio_manager = match AudioManager::new() {
             Ok(am) => {
@@ -452,6 +480,7 @@ impl GameWindow {
             audio_clips: HashMap::new(),
             particle_entity_map: HashMap::new(),
             audio_initialized: false,
+            mesh_cache,
         };
 
         // Initialize particle emitters from scene objects

@@ -61,6 +61,7 @@ image = "0.25"
 rfd = "0.15"
 tobj = "4.0"
 rand = "0.8"
+uuid = { version = "1.11", features = ["v4"] }
 
 # Async runtime (required by wgpu)
 pollster = "0.4"

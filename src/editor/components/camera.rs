@@ -37,7 +37,7 @@ impl Default for CameraProjection {
 }
 
 /// Camera component that can be attached to any SceneObject
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CameraComponent {
     /// Whether this camera is the main/active camera
     pub is_main: bool,

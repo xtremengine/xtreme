@@ -15,14 +15,19 @@ mod audio;
 mod camera;
 mod material;
 mod particles;
+mod prefab;
 mod transform;
 
 pub use audio::AudioAction;
+pub use prefab::PrefabAction;
+
+use std::collections::HashMap;
 
 use super::super::components::{
     AnimatorComponent, AudioListenerComponent, AudioSourceComponent, ParticleEmitterComponent,
     ParticlePreset,
 };
+use super::super::prefab::PrefabInstance;
 use super::super::selection::{SceneObject, Selection};
 use egui::Ui;
 
@@ -65,22 +70,24 @@ impl InspectorPanel {
     }
 
     /// Draw the inspector panel
-    /// Returns (changed, audio_action)
+    /// Returns (changed, audio_action, prefab_action)
     pub fn show(
         &mut self,
         ui: &mut Ui,
         objects: &mut [SceneObject],
         selection: &Selection,
-    ) -> (bool, AudioAction) {
+        prefab_instances: &HashMap<u32, PrefabInstance>,
+    ) -> (bool, AudioAction, PrefabAction) {
         let mut changed = false;
         let mut audio_action = AudioAction::None;
+        let mut prefab_action = PrefabAction::None;
 
         ui.heading("Inspector");
         ui.separator();
 
         if selection.is_empty() {
             ui.label("No object selected");
-            return (false, AudioAction::None);
+            return (false, AudioAction::None, PrefabAction::None);
         }
 
         let selected_ids = selection.all();
@@ -110,7 +117,7 @@ impl InspectorPanel {
         // Get first selected object for editing
         let Some(obj) = objects.iter_mut().find(|o| Some(o.id) == selection.first()) else {
             ui.label("Selected object not found");
-            return (false, AudioAction::None);
+            return (false, AudioAction::None, PrefabAction::None);
         };
 
         let obj_id = obj.id;
@@ -231,12 +238,18 @@ impl InspectorPanel {
                 });
             }
 
+            // Prefab Instance section (if applicable)
+            let action = prefab::draw_prefab_section(ui, obj, prefab_instances);
+            if action != PrefabAction::None {
+                prefab_action = action;
+            }
+
             // Add Component section
             ui.separator();
             self.draw_add_component(ui, obj, &mut changed);
         });
 
-        (changed, audio_action)
+        (changed, audio_action, prefab_action)
     }
 
     /// Draw the "Add Component" dropdown

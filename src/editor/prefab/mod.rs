@@ -1,6 +1,48 @@
 //! # Prefab System
 //!
-//! Reusable object templates that can be saved and instantiated.
+//! Advanced prefab system with nested prefabs and property-level overrides.
+//!
+//! ## Features
+//!
+//! - **Property Overrides**: Track changes at property level (position, rotation, etc.)
+//! - **Prefab Instances**: Link scene objects to their source prefabs
+//! - **Registry & Caching**: Efficient prefab loading with hot reload support
+//! - **Nested Prefabs**: Prefabs can contain other prefabs (with circular reference detection)
+//! - **Change Propagation**: Update instances when prefab changes
+//!
+//! ## Example
+//!
+//! ```rust,ignore
+//! use xtreme::editor::prefab::{Prefab, PrefabRef, PrefabInstance, PrefabRegistry};
+//!
+//! // Load and cache prefabs
+//! let mut registry = PrefabRegistry::with_base_path("./assets");
+//! let prefab = registry.get(&Path::new("prefabs/player.prefab"))?;
+//!
+//! // Instantiate with resolver
+//! let mut resolver = PrefabResolver::new(&mut registry, &mut id_gen);
+//! let result = resolver.resolve(&prefab_ref, position, &mut next_id)?;
+//! ```
+
+pub mod instance;
+pub mod overrides;
+pub mod propagation;
+pub mod registry;
+pub mod resolver;
+
+// Re-exports for convenience
+pub use instance::{InstanceIdGenerator, PrefabInstance, PrefabInstanceGroup, PrefabRef};
+pub use overrides::{paths, PropertyOverrides, PropertyPath};
+pub use propagation::{
+    apply_to_prefab, find_affected_instances, propagate_to_instances, sync_instance_overrides,
+    PropagationManager, PropagationResult,
+};
+pub use registry::{CacheStats, PrefabRegistry};
+pub use resolver::{
+    apply_overrides, detect_changes, revert_to_prefab, PrefabResolver, ResolvedPrefab,
+};
+
+// Original prefab types (migrated from prefab.rs)
 
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
@@ -61,6 +103,9 @@ pub struct PrefabObject {
     /// Attached script paths
     #[serde(default)]
     pub scripts: Vec<String>,
+    /// Reference to a nested prefab (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nested_prefab: Option<PrefabRef>,
 }
 
 impl PrefabObject {
@@ -80,6 +125,19 @@ impl PrefabObject {
     }
 }
 
+impl PartialEq for PrefabObject {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.local_position == other.local_position
+            && self.rotation == other.rotation
+            && self.scale == other.scale
+            && self.color == other.color
+            && self.visible == other.visible
+            && self.camera == other.camera
+            && self.parent_index == other.parent_index
+    }
+}
+
 /// A prefab - a reusable group of objects
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Prefab {
@@ -89,6 +147,9 @@ pub struct Prefab {
     pub objects: Vec<PrefabObject>,
     /// Prefab version for compatibility
     pub version: u32,
+    /// Unique identifier (optional, for robust references)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uuid: Option<String>,
 }
 
 impl Default for Prefab {
@@ -96,7 +157,8 @@ impl Default for Prefab {
         Self {
             name: "New Prefab".to_string(),
             objects: Vec::new(),
-            version: 1,
+            version: 3,
+            uuid: None,
         }
     }
 }
@@ -113,7 +175,18 @@ impl Prefab {
         Self {
             name: name.into(),
             objects: Vec::new(),
-            version: 1,
+            version: 3,
+            uuid: None,
+        }
+    }
+
+    /// Create a prefab with a UUID
+    pub fn with_uuid(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            objects: Vec::new(),
+            version: 3,
+            uuid: Some(uuid::Uuid::new_v4().to_string()),
         }
     }
 
@@ -196,6 +269,7 @@ impl Prefab {
                     camera: obj.camera.clone(),
                     parent_index,
                     scripts: d.script_paths.clone(),
+                    nested_prefab: None,
                 }
             })
             .collect();
@@ -203,7 +277,8 @@ impl Prefab {
         Ok(Self {
             name: name.into(),
             objects: prefab_objects,
-            version: 2, // Version 2 includes hierarchy and scripts
+            version: 3,
+            uuid: Some(uuid::Uuid::new_v4().to_string()),
         })
     }
 
@@ -257,6 +332,26 @@ impl Prefab {
         }
 
         objects
+    }
+
+    /// Instantiate with instance tracking
+    pub fn instantiate_tracked(
+        &self,
+        position: Vec3,
+        next_id: &mut u32,
+        instance_id: u32,
+        prefab_path: &Path,
+    ) -> (Vec<SceneObject>, Vec<PrefabInstance>) {
+        let objects = self.instantiate(position, next_id);
+        let prefab_ref = PrefabRef::new(prefab_path);
+
+        let instances: Vec<PrefabInstance> = objects
+            .iter()
+            .enumerate()
+            .map(|(idx, _)| PrefabInstance::new(prefab_ref.clone(), idx, instance_id))
+            .collect();
+
+        (objects, instances)
     }
 
     /// Get script paths for a specific object index
@@ -332,8 +427,10 @@ mod tests {
                 camera: None,
                 parent_index: None,
                 scripts: Vec::new(),
+                nested_prefab: None,
             }],
-            version: 2,
+            version: 3,
+            uuid: None,
         };
 
         let mut next_id = 10;

@@ -42,6 +42,8 @@ pub struct ObjectRenderData {
     pub texture_path: Option<String>,
     /// Optional shader path (.wgsl file)
     pub shader_path: Option<String>,
+    /// Optional mesh path (.obj file)
+    pub mesh_path: Option<String>,
 }
 
 /// Cached texture data with bind group
@@ -109,6 +111,8 @@ pub struct Viewport {
     /// Mesh bind group layout (for shader cache)
     #[allow(dead_code)]
     pub(crate) mesh_bind_group_layout: wgpu::BindGroupLayout,
+    /// Mesh cache: path -> GpuMesh
+    pub(crate) mesh_cache: HashMap<String, GpuMesh>,
 }
 
 impl Viewport {
@@ -188,6 +192,7 @@ impl Viewport {
             texture_cache: HashMap::new(),
             shader_cache,
             mesh_bind_group_layout: mesh.bind_group_layout,
+            mesh_cache: HashMap::new(),
         }
     }
 
@@ -227,6 +232,47 @@ impl Viewport {
     /// Clear the texture cache
     pub fn clear_texture_cache(&mut self) {
         self.texture_cache.clear();
+    }
+
+    /// Get or load a mesh from the cache
+    pub fn get_or_load_mesh(&mut self, device: &wgpu::Device, path: &str) -> Option<&GpuMesh> {
+        // Return cached if exists
+        if self.mesh_cache.contains_key(path) {
+            return self.mesh_cache.get(path);
+        }
+
+        // Try to load mesh
+        use crate::editor::mesh::load_obj;
+        use std::path::Path;
+
+        match load_obj(Path::new(path)) {
+            Ok(loaded_meshes) => {
+                if let Some(loaded) = loaded_meshes.into_iter().next() {
+                    let mesh = Mesh::from_raw(
+                        &loaded.positions,
+                        &loaded.normals,
+                        &loaded.texcoords,
+                        loaded.indices,
+                    );
+                    let gpu_mesh = GpuMesh::from_mesh(device, &mesh);
+                    self.mesh_cache.insert(path.to_string(), gpu_mesh);
+                    log::info!("Loaded mesh: {}", path);
+                    self.mesh_cache.get(path)
+                } else {
+                    log::error!("No meshes found in file: {}", path);
+                    None
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to load mesh {}: {}", path, e);
+                None
+            }
+        }
+    }
+
+    /// Clear the mesh cache
+    pub fn clear_mesh_cache(&mut self) {
+        self.mesh_cache.clear();
     }
 
     /// Resize the viewport

@@ -179,6 +179,7 @@ impl EditorApp {
                 {
                     match crate::editor::mesh::load_obj(&path) {
                         Ok(meshes) => {
+                            let mesh_path_str = path.to_string_lossy().to_string();
                             for mesh in meshes {
                                 log::info!(
                                     "Imported mesh '{}': {} vertices, {} triangles",
@@ -188,8 +189,9 @@ impl EditorApp {
                                 );
 
                                 let center = mesh.center();
-                                let mut obj = SceneObject::cube(self.next_id, center);
-                                obj.name = mesh.name;
+                                let mut obj = SceneObject::new(self.next_id, &mesh.name);
+                                obj.position = center;
+                                obj.mesh_path = Some(mesh_path_str.clone());
                                 self.next_id += 1;
                                 self.create_object(obj);
                             }
@@ -257,6 +259,22 @@ impl EditorApp {
                 log::info!("Created Animated Object");
                 ui.close();
             }
+
+            ui.separator();
+
+            if ui.button("Create Cutscene...").clicked() {
+                self.show_cutscene_dialog = true;
+                ui.close();
+            }
+
+            if ui.button("New Timeline Sequence").clicked() {
+                use crate::timeline::TimelineSequence;
+                let seq = TimelineSequence::new("New Sequence");
+                self.timeline_panel.set_sequence(seq);
+                self.show_timeline = true;
+                log::info!("Created new timeline sequence");
+                ui.close();
+            }
         });
     }
 
@@ -286,9 +304,58 @@ impl EditorApp {
 
             ui.separator();
 
+            // Prefab Registry controls
+            let registry_count = self.prefab_registry.len();
+            let modified_count = self.prefab_registry.get_modified_prefabs().len();
+
+            ui.label(format!(
+                "Registry: {} loaded{}",
+                registry_count,
+                if modified_count > 0 {
+                    format!(" ({} modified)", modified_count)
+                } else {
+                    String::new()
+                }
+            ));
+
+            if ui.button("Reload All Prefabs").clicked() {
+                self.reload_all_prefabs();
+                ui.close();
+            }
+
+            if modified_count > 0 && ui.button("Reload Modified Only").clicked() {
+                self.reload_modified_prefabs();
+                ui.close();
+            }
+
+            ui.separator();
+
+            // Replace selected with prefab (for nested prefabs)
+            if !self.prefabs.is_empty() && !self.selection.is_empty() {
+                ui.menu_button("Replace Selected with Prefab", |ui| {
+                    let prefab_names: Vec<(usize, String)> = self
+                        .prefabs
+                        .iter()
+                        .enumerate()
+                        .map(|(i, p)| (i, p.name.clone()))
+                        .collect();
+
+                    for (i, name) in prefab_names {
+                        if ui.button(&name).clicked() {
+                            self.replace_selected_with_prefab(i);
+                            ui.close();
+                        }
+                    }
+                });
+
+                ui.separator();
+            }
+
+            // Instantiate prefab list
             if self.prefabs.is_empty() {
                 ui.label("(No prefabs)");
             } else {
+                ui.label("Instantiate:");
                 let prefab_info: Vec<(usize, String, usize)> = self
                     .prefabs
                     .iter()
@@ -315,6 +382,30 @@ impl EditorApp {
 
     fn draw_view_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("View", |ui| {
+            // Panel toggles
+            let console_label = if self.console_panel.visible {
+                "✓ Console"
+            } else {
+                "  Console"
+            };
+            if ui.button(console_label).clicked() {
+                self.console_panel.visible = !self.console_panel.visible;
+                ui.close();
+            }
+
+            let timeline_label = if self.show_timeline {
+                "✓ Timeline"
+            } else {
+                "  Timeline"
+            };
+            if ui.button(timeline_label).clicked() {
+                self.show_timeline = !self.show_timeline;
+                ui.close();
+            }
+
+            ui.separator();
+
+            // Camera views
             if ui.button("Reset Camera").clicked() {
                 self.camera = IsometricCamera::default();
                 ui.close();

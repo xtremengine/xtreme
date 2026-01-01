@@ -11,6 +11,8 @@ use super::components::{
     AnimatorComponent, AudioListenerComponent, AudioSourceComponent, CameraComponent,
     ParticleEmitterComponent,
 };
+use super::prefab::PrefabInstance;
+use crate::timeline::TimelineSequence;
 
 /// Serializable scene object
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -57,6 +59,12 @@ pub struct SceneObjectData {
     /// Animator component (optional)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub animator: Option<AnimatorComponent>,
+    /// Prefab instance data (if this object is a prefab instance)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prefab_instance: Option<PrefabInstance>,
+    /// Mesh file path (for 3D models, e.g., .obj files)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mesh_path: Option<String>,
 }
 
 impl SceneObjectData {
@@ -87,6 +95,9 @@ pub struct SceneData {
     pub camera_distance: Option<f32>,
     /// Objects in the scene
     pub objects: Vec<SceneObjectData>,
+    /// Timeline sequence (animation data)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeline: Option<TimelineSequence>,
 }
 
 impl Default for SceneData {
@@ -97,6 +108,7 @@ impl Default for SceneData {
             camera_target: None,
             camera_distance: None,
             objects: Vec::new(),
+            timeline: None,
         }
     }
 }
@@ -110,6 +122,7 @@ impl SceneData {
             camera_target: None,
             camera_distance: None,
             objects: Vec::new(),
+            timeline: None,
         }
     }
 
@@ -303,6 +316,8 @@ mod tests {
             audio_listener: None,
             particle_emitter: None,
             animator: None,
+            prefab_instance: None,
+            mesh_path: None,
         });
 
         let temp = NamedTempFile::new().unwrap();

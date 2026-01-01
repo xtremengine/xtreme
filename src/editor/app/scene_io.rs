@@ -19,6 +19,9 @@ impl EditorApp {
         scene_data.camera_target = Some(self.camera.target.to_array());
         scene_data.camera_distance = Some(self.camera.distance);
 
+        // Save timeline sequence if present
+        scene_data.timeline = self.timeline_panel.sequence().cloned();
+
         // Create a map from object id to index in the save order
         let id_to_index: HashMap<u32, usize> = self
             .scene_objects
@@ -58,6 +61,9 @@ impl EditorApp {
                 .parent
                 .and_then(|parent_id| id_to_index.get(&parent_id).copied());
 
+            // Get prefab instance if this object is a prefab instance
+            let prefab_instance = self.prefab_instances.get(&obj.id).cloned();
+
             scene_data.add_object(SceneObjectData {
                 id: obj.id,
                 name: obj.name.clone(),
@@ -75,6 +81,8 @@ impl EditorApp {
                 audio_listener: obj.audio_listener.clone(),
                 particle_emitter: obj.particle_emitter.clone(),
                 animator: obj.animator.clone(),
+                prefab_instance,
+                mesh_path: obj.mesh_path.clone(),
             });
         }
 
@@ -97,6 +105,7 @@ impl EditorApp {
                 self.scene_objects.clear();
                 self.selection.clear();
                 self.command_history.clear();
+                self.prefab_instances.clear();
                 self.next_id = 0;
 
                 // Load camera settings
@@ -125,6 +134,16 @@ impl EditorApp {
                     obj.audio_listener = obj_data.audio_listener.clone();
                     obj.particle_emitter = obj_data.particle_emitter.clone();
                     obj.animator = obj_data.animator.clone();
+                    obj.mesh_path = obj_data.mesh_path.clone();
+
+                    // Track prefab instance if present
+                    if let Some(ref prefab_instance) = obj_data.prefab_instance {
+                        self.prefab_instances
+                            .insert(obj_id, prefab_instance.clone());
+                        // Ensure instance ID generator doesn't conflict
+                        self.instance_id_generator
+                            .ensure_after(prefab_instance.instance_id);
+                    }
 
                     parent_indices.push(obj_data.parent_index);
                     self.scene_objects.push(obj);
@@ -196,6 +215,15 @@ impl EditorApp {
 
                 self.scene_manager.set_path(path.clone());
 
+                // Restore timeline sequence if present
+                if let Some(timeline) = scene_data.timeline {
+                    self.timeline_panel.set_sequence(timeline);
+                    self.show_timeline = true; // Show timeline panel when loading scene with timeline
+                    log::info!("Timeline sequence restored from scene");
+                } else {
+                    self.timeline_panel.clear_sequence();
+                }
+
                 // Mark particles dirty if any objects have particle emitters
                 if self
                     .scene_objects
@@ -218,8 +246,10 @@ impl EditorApp {
         self.scene_objects.clear();
         self.selection.clear();
         self.command_history.clear();
+        self.prefab_instances.clear();
         self.next_id = 0;
         self.scene_manager.new_scene();
+        self.timeline_panel.clear_sequence();
         log::info!("New scene created");
     }
 }

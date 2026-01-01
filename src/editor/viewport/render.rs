@@ -290,7 +290,16 @@ impl Viewport {
                     pass.set_bind_group(0, &self.mesh_bind_group, &[dynamic_offset]);
                 }
 
-                self.cube_mesh.draw(&mut pass);
+                // Draw the correct mesh (custom mesh or fallback to cube)
+                if let Some(mesh_path) = &obj.mesh_path {
+                    if let Some(gpu_mesh) = self.mesh_cache.get(mesh_path) {
+                        gpu_mesh.draw(&mut pass);
+                    } else {
+                        self.cube_mesh.draw(&mut pass);
+                    }
+                } else {
+                    self.cube_mesh.draw(&mut pass);
+                }
             }
         }
 

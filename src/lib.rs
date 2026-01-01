@@ -43,6 +43,7 @@ pub mod particles;
 pub mod physics;
 pub mod render;
 pub mod scripting;
+pub mod timeline;
 pub mod utils;
 
 /// Prelude module - commonly used types
@@ -64,6 +65,9 @@ pub mod prelude {
 
     // Particles
     pub use crate::particles::{EmitterConfig, ParticleEmitter, ParticleManager};
+
+    // Timeline
+    pub use crate::timeline::{Keyframe, TimelinePlayer, TimelineSequence, Track};
 }
 
 /// Engine version

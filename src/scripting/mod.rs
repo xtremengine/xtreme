@@ -16,7 +16,7 @@ mod runtime;
 mod script;
 
 #[cfg(feature = "scripting")]
-pub use api::{ObjectTransform, ScriptContext};
+pub use api::{AnimationChange, AnimatorData, ObjectTransform, ScriptContext};
 #[cfg(feature = "scripting")]
 pub use runtime::ScriptRuntime;
 #[cfg(feature = "scripting")]

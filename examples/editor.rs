@@ -4,20 +4,19 @@
 //!
 //! Run with: `cargo run --example editor`
 
+use xtreme::editor::panels::init_log_capture;
 use xtreme::editor::EditorApp;
 use xtreme::render::{run, WindowConfig};
 
 fn main() {
-    // Initialize logging
-    env_logger::Builder::from_env(
-        env_logger::Env::default().default_filter_or("info,wgpu_core=warn"),
-    )
-    .init();
+    // Initialize custom log capture for console panel
+    let log_receiver = init_log_capture(log::Level::Debug);
 
     log::info!("Starting Xtreme Engine Editor v{}", xtreme::VERSION);
 
-    // Create editor application
-    let app = EditorApp::new();
+    // Create editor application with log receiver
+    let mut app = EditorApp::new();
+    app.set_log_receiver(log_receiver);
 
     // Window configuration
     let config = WindowConfig::new("Xtreme Engine Editor")

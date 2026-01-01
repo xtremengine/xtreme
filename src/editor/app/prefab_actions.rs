@@ -146,4 +146,66 @@ impl EditorApp {
     pub fn prefab_count(&self) -> usize {
         self.prefabs.len()
     }
+
+    /// Reload all prefabs from disk
+    pub fn reload_all_prefabs(&mut self) {
+        let count = self.prefab_registry.reload_all();
+        log::info!("Reloaded {} prefabs from registry", count);
+    }
+
+    /// Reload only modified prefabs
+    pub fn reload_modified_prefabs(&mut self) {
+        let modified = self.prefab_registry.get_modified_prefabs();
+        let count = modified.len();
+
+        for path in modified {
+            if let Err(e) = self.prefab_registry.reload(&path) {
+                log::error!("Failed to reload prefab {:?}: {}", path, e);
+            }
+        }
+
+        log::info!("Reloaded {} modified prefabs", count);
+    }
+
+    /// Replace selected object with a prefab instance
+    pub fn replace_selected_with_prefab(&mut self, prefab_idx: usize) {
+        let Some(selected_id) = self.selection.first() else {
+            log::warn!("No object selected");
+            return;
+        };
+
+        let Some(prefab) = self.prefabs.get(prefab_idx).cloned() else {
+            log::error!("Prefab index {} out of range", prefab_idx);
+            return;
+        };
+
+        // Get position of selected object
+        let position = self
+            .scene_objects
+            .iter()
+            .find(|o| o.id == selected_id)
+            .map(|o| o.position)
+            .unwrap_or(Vec3::ZERO);
+
+        // Store the name for logging
+        let old_name = self
+            .scene_objects
+            .iter()
+            .find(|o| o.id == selected_id)
+            .map(|o| o.name.clone())
+            .unwrap_or_default();
+
+        // Delete the original object
+        self.delete_object(selected_id);
+
+        // Instantiate the prefab at the same position
+        self.instantiate_prefab(prefab_idx, position);
+
+        log::info!(
+            "Replaced '{}' with prefab '{}' at {:?}",
+            old_name,
+            prefab.name,
+            position
+        );
+    }
 }

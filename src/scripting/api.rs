@@ -29,6 +29,30 @@ pub struct ObjectTransform {
     pub scale: [f32; 3],
 }
 
+/// Animation data for an object
+#[derive(Clone, Debug, Default)]
+pub struct AnimatorData {
+    /// Available animation names
+    pub animations: Vec<String>,
+    /// Current animation name
+    pub current_animation: String,
+    /// Whether animation is playing
+    pub playing: bool,
+    /// Playback speed
+    pub speed: f32,
+}
+
+/// Animation change request
+#[derive(Clone, Debug)]
+pub enum AnimationChange {
+    /// Play an animation by name
+    Play(String),
+    /// Stop animation
+    Stop,
+    /// Set speed
+    SetSpeed(f32),
+}
+
 /// Context provided to scripts during execution
 pub struct ScriptContext {
     /// Current object ID being processed
@@ -53,6 +77,10 @@ pub struct ScriptContext {
     spawn_queue: Vec<SpawnRequest>,
     /// Objects to destroy
     destroy_queue: Vec<u32>,
+    /// Animator data per object
+    animator_data: HashMap<u32, AnimatorData>,
+    /// Queued animation changes
+    animation_changes: Vec<(u32, AnimationChange)>,
 }
 
 /// Request to spawn a new object
@@ -85,6 +113,8 @@ impl ScriptContext {
             scale_changes: Vec::new(),
             spawn_queue: Vec::new(),
             destroy_queue: Vec::new(),
+            animator_data: HashMap::new(),
+            animation_changes: Vec::new(),
         }
     }
 
@@ -121,6 +151,12 @@ impl ScriptContext {
         self.transforms.clear();
         self.names.clear();
         self.visibility.clear();
+        self.animator_data.clear();
+    }
+
+    /// Register animator data for an object
+    pub fn register_animator(&mut self, id: u32, data: AnimatorData) {
+        self.animator_data.insert(id, data);
     }
 
     /// Get queued position changes
@@ -146,6 +182,11 @@ impl ScriptContext {
     /// Get destroy queue
     pub fn drain_destroy_queue(&mut self) -> Vec<u32> {
         std::mem::take(&mut self.destroy_queue)
+    }
+
+    /// Get animation changes
+    pub fn drain_animation_changes(&mut self) -> Vec<(u32, AnimationChange)> {
+        std::mem::take(&mut self.animation_changes)
     }
 
     /// Read changes back from Python dict after script execution
@@ -205,6 +246,46 @@ impl ScriptContext {
                 }
             }
         }
+
+        // Check if animation changed
+        if let Ok(Some(changed)) = dict.get_item("_animation_changed") {
+            if changed.extract::<bool>().unwrap_or(false) {
+                // Check for play animation
+                if let Ok(Some(anim_name)) = dict.get_item("_play_animation") {
+                    if let Ok(name) = anim_name.extract::<String>() {
+                        self.animation_changes
+                            .push((object_id, AnimationChange::Play(name.clone())));
+                        // Update local animator data so subsequent scripts see the change
+                        if let Some(animator) = self.animator_data.get_mut(&object_id) {
+                            animator.current_animation = name;
+                            animator.playing = true;
+                        }
+                    }
+                }
+
+                // Check for stop animation
+                if let Ok(Some(stop)) = dict.get_item("_stop_animation") {
+                    if stop.extract::<bool>().unwrap_or(false) {
+                        self.animation_changes
+                            .push((object_id, AnimationChange::Stop));
+                        if let Some(animator) = self.animator_data.get_mut(&object_id) {
+                            animator.playing = false;
+                        }
+                    }
+                }
+
+                // Check for speed change
+                if let Ok(Some(speed)) = dict.get_item("_animation_speed") {
+                    if let Ok(speed_val) = speed.extract::<f32>() {
+                        self.animation_changes
+                            .push((object_id, AnimationChange::SetSpeed(speed_val)));
+                        if let Some(animator) = self.animator_data.get_mut(&object_id) {
+                            animator.speed = speed_val;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// Convert context to Python dictionary for passing to scripts
@@ -255,6 +336,16 @@ impl ScriptContext {
             let _ = input_dict.set_item("mouse_buttons", mouse_buttons);
         }
         let _ = dict.set_item("input", input_dict);
+
+        // Animation data for current object
+        if let Some(animator) = self.animator_data.get(&self.current_object) {
+            if let Ok(anims) = PyList::new(py, &animator.animations) {
+                let _ = dict.set_item("_animations", anims);
+            }
+            let _ = dict.set_item("_current_animation", animator.current_animation.as_str());
+            let _ = dict.set_item("_animation_playing", animator.playing);
+            let _ = dict.set_item("_animation_speed", animator.speed);
+        }
 
         dict
     }
@@ -381,6 +472,59 @@ fn xtreme_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
         log::error!("[Script] {}", message);
     }
 
+    // Animation functions
+
+    /// Get list of available animations for current object
+    #[pyfunction]
+    fn get_animations(ctx: &Bound<'_, PyDict>) -> PyResult<Vec<String>> {
+        if let Some(anims) = ctx.get_item("_animations").ok().flatten() {
+            return anims.extract();
+        }
+        Ok(Vec::new())
+    }
+
+    /// Get current animation name
+    #[pyfunction]
+    fn get_current_animation(ctx: &Bound<'_, PyDict>) -> PyResult<String> {
+        if let Some(anim) = ctx.get_item("_current_animation").ok().flatten() {
+            return anim.extract();
+        }
+        Ok(String::new())
+    }
+
+    /// Play an animation by name
+    #[pyfunction]
+    fn play_animation(ctx: &Bound<'_, PyDict>, name: &str) -> PyResult<()> {
+        ctx.set_item("_play_animation", name)?;
+        ctx.set_item("_animation_changed", true)?;
+        Ok(())
+    }
+
+    /// Stop the current animation
+    #[pyfunction]
+    fn stop_animation(ctx: &Bound<'_, PyDict>) -> PyResult<()> {
+        ctx.set_item("_stop_animation", true)?;
+        ctx.set_item("_animation_changed", true)?;
+        Ok(())
+    }
+
+    /// Set animation playback speed
+    #[pyfunction]
+    fn set_animation_speed(ctx: &Bound<'_, PyDict>, speed: f32) -> PyResult<()> {
+        ctx.set_item("_animation_speed", speed)?;
+        ctx.set_item("_animation_changed", true)?;
+        Ok(())
+    }
+
+    /// Check if animation is currently playing
+    #[pyfunction]
+    fn is_animation_playing(ctx: &Bound<'_, PyDict>) -> PyResult<bool> {
+        if let Some(playing) = ctx.get_item("_animation_playing").ok().flatten() {
+            return playing.extract();
+        }
+        Ok(false)
+    }
+
     m.add_function(wrap_pyfunction!(get_position, m)?)?;
     m.add_function(wrap_pyfunction!(set_position, m)?)?;
     m.add_function(wrap_pyfunction!(translate, m)?)?;
@@ -391,6 +535,13 @@ fn xtreme_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_info, m)?)?;
     m.add_function(wrap_pyfunction!(log_warn, m)?)?;
     m.add_function(wrap_pyfunction!(log_error, m)?)?;
+    // Animation functions
+    m.add_function(wrap_pyfunction!(get_animations, m)?)?;
+    m.add_function(wrap_pyfunction!(get_current_animation, m)?)?;
+    m.add_function(wrap_pyfunction!(play_animation, m)?)?;
+    m.add_function(wrap_pyfunction!(stop_animation, m)?)?;
+    m.add_function(wrap_pyfunction!(set_animation_speed, m)?)?;
+    m.add_function(wrap_pyfunction!(is_animation_playing, m)?)?;
 
     Ok(())
 }

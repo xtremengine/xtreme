@@ -16,6 +16,34 @@ impl Mesh {
         Self { vertices, indices }
     }
 
+    /// Create a mesh from raw vertex data (positions, normals, texcoords)
+    pub fn from_raw(
+        positions: &[f32],
+        normals: &[f32],
+        texcoords: &[f32],
+        indices: Vec<u32>,
+    ) -> Self {
+        let vertex_count = positions.len() / 3;
+        let mut vertices = Vec::with_capacity(vertex_count);
+
+        for i in 0..vertex_count {
+            let position = [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]];
+            let normal = if normals.len() >= (i + 1) * 3 {
+                [normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]]
+            } else {
+                [0.0, 1.0, 0.0]
+            };
+            let uv = if texcoords.len() >= (i + 1) * 2 {
+                [texcoords[i * 2], texcoords[i * 2 + 1]]
+            } else {
+                [0.0, 0.0]
+            };
+            vertices.push(Vertex::new(position, normal, uv));
+        }
+
+        Self { vertices, indices }
+    }
+
     /// Create a unit cube centered at origin
     pub fn cube(size: f32) -> Self {
         let s = size / 2.0;

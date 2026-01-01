@@ -38,6 +38,7 @@ impl EditorApp {
                     color,
                     texture_path: o.texture_path.clone(),
                     shader_path: o.shader_path.clone(),
+                    mesh_path: o.mesh_path.clone(),
                 });
             }
         }
@@ -191,12 +192,16 @@ impl App for EditorApp {
         // Get render data (regular objects and cameras separately)
         let (regular_objects, camera_objects) = self.get_render_data();
 
-        // Preload textures into cache (must be done before render)
+        // Preload textures and meshes into cache (must be done before render)
         if let Some(viewport) = &mut self.viewport {
             for obj in &regular_objects {
                 if let Some(ref path) = obj.texture_path {
                     // This loads the texture into the cache if not already there
                     viewport.get_or_load_texture(ctx, path);
+                }
+                if let Some(ref path) = obj.mesh_path {
+                    // This loads the mesh into the cache if not already there
+                    viewport.get_or_load_mesh(&ctx.device, path);
                 }
             }
         }

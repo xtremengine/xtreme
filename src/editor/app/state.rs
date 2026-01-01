@@ -10,8 +10,10 @@ use crate::core::{Entity, World};
 use crate::editor::commands::CommandHistory;
 use crate::editor::game_window::GameWindow;
 use crate::editor::gizmos::Gizmo;
-use crate::editor::panels::{AssetBrowser, HierarchyPanel, InspectorPanel, ToolbarPanel};
-use crate::editor::prefab::Prefab;
+use crate::editor::panels::{
+    AssetBrowser, ConsolePanel, HierarchyPanel, InspectorPanel, TimelinePanel, ToolbarPanel,
+};
+use crate::editor::prefab::{InstanceIdGenerator, Prefab, PrefabInstance, PrefabRegistry};
 use crate::editor::scene::SceneManager;
 use crate::editor::selection::{SceneObject, Selection};
 use crate::editor::shortcuts::ShortcutManager;
@@ -92,6 +94,13 @@ pub struct EditorApp {
     pub(crate) clipboard: Vec<SceneObject>,
     /// Saved prefabs
     pub(crate) prefabs: Vec<Prefab>,
+    /// Prefab instances in the scene (object_id -> PrefabInstance)
+    pub(crate) prefab_instances: HashMap<u32, PrefabInstance>,
+    /// Prefab registry for caching loaded prefabs
+    #[allow(dead_code)]
+    pub(crate) prefab_registry: PrefabRegistry,
+    /// Instance ID generator for prefab instances
+    pub(crate) instance_id_generator: InstanceIdGenerator,
     /// Asset browser panel
     pub(crate) asset_browser: AssetBrowser,
     /// Script runtime (only with scripting feature)
@@ -137,6 +146,8 @@ pub struct EditorApp {
     pub(crate) game_window: Option<GameWindow>,
     /// Pending game window creation (needs event loop)
     pub(crate) pending_game_start: bool,
+    /// Whether timeline was started for current game session (after splash)
+    pub(crate) timeline_game_started: bool,
     /// Height of hierarchy panel for resizable split
     pub(crate) hierarchy_height: f32,
     /// Particle manager for editor preview
@@ -151,6 +162,18 @@ pub struct EditorApp {
     pub(crate) audio_manager: Option<AudioManager>,
     /// Currently playing audio preview (clip_path -> sink_id)
     pub(crate) audio_preview_sink: Option<u64>,
+    /// Console panel for debug logs
+    pub(crate) console_panel: ConsolePanel,
+    /// Timeline panel for animation editing
+    pub(crate) timeline_panel: TimelinePanel,
+    /// Whether timeline panel is visible
+    pub(crate) show_timeline: bool,
+    /// Whether cutscene builder dialog is open
+    pub(crate) show_cutscene_dialog: bool,
+    /// Cutscene name input
+    pub(crate) cutscene_name_input: String,
+    /// Cutscene duration input
+    pub(crate) cutscene_duration_input: f32,
 }
 
 impl EditorApp {
@@ -200,6 +223,9 @@ impl EditorApp {
             snap_settings: SnapSettings::new(),
             clipboard: Vec::new(),
             prefabs: Vec::new(),
+            prefab_instances: HashMap::new(),
+            prefab_registry: PrefabRegistry::new(),
+            instance_id_generator: InstanceIdGenerator::new(),
             asset_browser: AssetBrowser::new(std::path::PathBuf::from(".")),
             #[cfg(feature = "scripting")]
             script_runtime: ScriptRuntime::new(),
@@ -222,6 +248,7 @@ impl EditorApp {
             project_dialog_tab: 0,
             game_window: None,
             pending_game_start: false,
+            timeline_game_started: false,
             hierarchy_height: 300.0,
             particle_manager: None,
             particle_world: World::new(),
@@ -229,7 +256,23 @@ impl EditorApp {
             particle_entity_map: HashMap::new(),
             audio_manager: AudioManager::new().ok(),
             audio_preview_sink: None,
+            console_panel: ConsolePanel::new(),
+            timeline_panel: TimelinePanel::new(),
+            show_timeline: false,
+            show_cutscene_dialog: false,
+            cutscene_name_input: String::new(),
+            cutscene_duration_input: 10.0,
         }
+    }
+
+    /// Set the log receiver for the console panel
+    pub fn set_log_receiver(
+        &mut self,
+        receiver: &'static std::sync::Mutex<
+            std::sync::mpsc::Receiver<crate::editor::panels::console::LogEntry>,
+        >,
+    ) {
+        self.console_panel.set_receiver(receiver);
     }
 }
 

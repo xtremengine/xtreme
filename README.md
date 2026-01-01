@@ -63,13 +63,16 @@ A modular ECS game engine with isometric 3D rendering and ML-powered AI, built i
 - **Toolbar**: Object creation and manipulation tools
 - **Undo/Redo**: Full command history with unlimited levels
 - **Scene I/O**: Save/load in RON or JSON format
-- **Prefab System**: Reusable object templates
+- **Prefab System**: Reusable object templates with property overrides
+- **Nested Prefabs**: Prefabs containing other prefabs with circular reference detection
 - **Keyboard Shortcuts**: Customizable bindings (see below)
 - **Play Mode**: Test scenes directly in editor
 - **Camera Visualization**: Wireframe pyramid showing camera direction
 - **Audio Components**: Audio Source and Listener with preview
 - **Particle Effects**: Create and preview particle emitters
 - **Component System**: Add/remove Audio, Particles, Animator to any object
+- **Console Panel**: Debug log with level filters, search, and copy to clipboard
+- **Timeline/Sequencer**: Keyframe animation for objects, cameras, and cutscenes
 
 ### Scripting (Optional)
 - **Python Integration**: pyo3-based scripting system
@@ -287,18 +290,31 @@ xtreme/
 │   │   ├── viewport/       # 3D view rendering
 │   │   ├── panels/         # UI panels
 │   │   │   ├── hierarchy.rs   # Entity tree
-│   │   │   ├── inspector.rs   # Component editor
+│   │   │   ├── inspector/     # Component editor
 │   │   │   ├── toolbar.rs     # Tools
-│   │   │   └── asset_browser.rs # File browser
+│   │   │   ├── asset_browser.rs # File browser
+│   │   │   ├── console/       # Debug log panel
+│   │   │   └── timeline.rs    # Animation timeline
 │   │   ├── gizmos/         # Transform handles
 │   │   ├── components/     # Editor components
 │   │   │   └── camera.rs   # CameraComponent
 │   │   ├── selection.rs    # Object selection
 │   │   ├── commands.rs     # Undo/redo commands
 │   │   ├── scene.rs        # Scene serialization
-│   │   ├── prefab.rs       # Prefab system
+│   │   ├── prefab/         # Advanced prefab system
+│   │   │   ├── mod.rs      # Prefab core
+│   │   │   ├── overrides.rs    # Property-level overrides
+│   │   │   ├── instance.rs     # Prefab instances
+│   │   │   ├── registry.rs     # Prefab caching
+│   │   │   ├── resolver.rs     # Nested prefab resolution
+│   │   │   └── propagation.rs  # Change propagation
 │   │   ├── hierarchy.rs    # Parent-child system
 │   │   └── shortcuts.rs    # Keyboard shortcuts
+│   ├── timeline/           # Animation timeline
+│   │   ├── mod.rs          # Timeline exports
+│   │   ├── sequence.rs     # Tracks and keyframes
+│   │   ├── playback.rs     # Timeline player
+│   │   └── cutscene.rs     # Cutscene builder
 │   ├── scripting/          # Python integration (optional)
 │   │   ├── script.rs       # Script component
 │   │   ├── runtime.rs      # Python runtime
@@ -523,6 +539,48 @@ def _physics_update(ctx, delta):
     pass
 ```
 
+### Timeline (`xtreme::timeline`)
+
+Keyframe animation and cutscene system:
+
+```rust
+use xtreme::timeline::*;
+
+// Create a timeline sequence
+let mut sequence = TimelineSequence::new("Walk Cycle");
+sequence.duration = 2.0;
+sequence.frame_rate = 30.0;
+sequence.looping = true;
+
+// Add position track with keyframes
+let mut track = Track::new(1, "Position", TrackType::ObjectPosition);
+track.target_entity = Some(entity_id);
+track.add_keyframe(Keyframe::with_easing(
+    0.0,
+    KeyframeValue::Vec3(Vec3::new(0.0, 0.0, 0.0)),
+    Easing::EaseInOut,
+));
+track.add_keyframe(Keyframe::new(
+    1.0,
+    KeyframeValue::Vec3(Vec3::new(10.0, 0.0, 0.0)),
+));
+sequence.add_track(track);
+
+// Create player and sample
+let mut player = TimelinePlayer::new();
+player.play();
+player.update(delta_time, &sequence);
+let result = player.sample(&sequence);
+
+// Use cutscene builder for cinematic sequences
+let cutscene = CutsceneBuilder::new("Intro")
+    .duration(10.0)
+    .camera_move(0.0, 5.0, start_pos, end_pos, Easing::EaseInOut)
+    .dialogue(2.0, "Hero", "Hello, world!", 2.0)
+    .event(5.0, "start_music")
+    .build();
+```
+
 ### Editor (`xtreme::editor`)
 
 Visual game editor:
@@ -716,6 +774,10 @@ cargo doc --open
 - [x] GPU Particle System with Presets
 - [x] Audio System (rodio) with Editor Preview
 - [x] Audio/Particle Components in Editor
+- [x] Console/Debug Log Panel with Filters
+- [x] Advanced Prefab System (nested prefabs, property overrides)
+- [x] Timeline/Sequencer with Keyframe Animation
+- [x] Cutscene Builder
 
 ### Planned
 - [ ] Instanced mesh rendering
@@ -723,7 +785,7 @@ cargo doc --open
 - [ ] Network multiplayer
 - [ ] Asset hot-reloading
 - [ ] WebGPU/WASM support
-- [ ] Skeletal Animation system
+- [ ] Skeletal Animation with Timeline Integration
 
 ## Contributing
 
