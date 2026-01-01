@@ -291,11 +291,38 @@ impl EditorApp {
     }
 
     fn draw_inspector_panel(&mut self, ctx: &egui::Context) {
+        use crate::editor::panels::AudioAction;
+
         egui::SidePanel::right("inspector")
             .default_width(280.0)
             .show(ctx, |ui| {
-                self.inspector_panel
-                    .show(ui, &mut self.scene_objects, &self.selection);
+                let (changed, audio_action) =
+                    self.inspector_panel
+                        .show(ui, &mut self.scene_objects, &self.selection);
+
+                // Handle audio actions
+                match audio_action {
+                    AudioAction::PlayPreview(path) => {
+                        self.play_audio_preview(&path);
+                    }
+                    AudioAction::StopPreview => {
+                        self.stop_audio_preview();
+                    }
+                    AudioAction::None => {}
+                }
+
+                // Mark particles dirty if inspector changed anything related to particles
+                if changed {
+                    // Check if the selected object has a particle emitter
+                    if let Some(id) = self.selection.first() {
+                        if let Some(obj) = self.scene_objects.iter().find(|o| o.id == id) {
+                            if obj.particle_emitter.is_some() {
+                                self.particles_dirty = true;
+                            }
+                        }
+                    }
+                    self.scene_manager.mark_dirty();
+                }
 
                 ui.separator();
 

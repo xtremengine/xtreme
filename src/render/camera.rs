@@ -59,6 +59,23 @@ impl IsometricCamera {
     pub fn view_projection_matrix(&self) -> Mat4 {
         self.view_projection()
     }
+
+    /// Get the camera's right direction vector
+    pub fn right(&self) -> Vec3 {
+        // Right is perpendicular to the forward direction in the XZ plane
+        let cos_yaw = self.yaw.cos();
+        let sin_yaw = self.yaw.sin();
+        Vec3::new(cos_yaw, 0.0, -sin_yaw).normalize()
+    }
+
+    /// Get the camera's up direction vector
+    pub fn up(&self) -> Vec3 {
+        // For billboard particles, we typically want world up
+        // But we can also calculate the camera's actual up
+        let forward = (self.target - self.eye_position()).normalize();
+        let right = self.right();
+        right.cross(forward).normalize()
+    }
 }
 
 impl Default for IsometricCamera {

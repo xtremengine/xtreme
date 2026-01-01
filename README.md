@@ -25,6 +25,22 @@ A modular ECS game engine with isometric 3D rendering and ML-powered AI, built i
 - **Mesh Primitives**: Cubes, spheres, planes, and custom geometry
 - **Egui Integration**: Immediate mode UI for editor and debug
 - **Camera Components**: Per-entity cameras with perspective/orthographic projection
+- **GPU Particle System**: High-performance compute shader particles with presets
+
+### Audio System
+- **Multiple Formats**: WAV, MP3, OGG, FLAC support via rodio
+- **Spatial Audio**: 3D positional audio with distance attenuation
+- **Audio Source Component**: Per-object audio with volume, pitch, looping
+- **Audio Listener**: Camera-based audio reception
+- **Autoplay**: Automatic playback on game start
+- **Editor Preview**: Test audio directly in inspector
+
+### Particle System
+- **GPU Accelerated**: Compute shader simulation for thousands of particles
+- **Built-in Presets**: Fire, Smoke, Sparkles, Rain, Explosion
+- **Custom Effects**: Full control over spawn rate, lifetime, colors, size, gravity
+- **Local/World Space**: Particles can follow emitter or stay in world space
+- **Editor Preview**: Real-time particle preview in viewport
 
 ### Physics
 - **Collision Shapes**: AABB, Sphere, OBB
@@ -51,6 +67,9 @@ A modular ECS game engine with isometric 3D rendering and ML-powered AI, built i
 - **Keyboard Shortcuts**: Customizable bindings (see below)
 - **Play Mode**: Test scenes directly in editor
 - **Camera Visualization**: Wireframe pyramid showing camera direction
+- **Audio Components**: Audio Source and Listener with preview
+- **Particle Effects**: Create and preview particle emitters
+- **Component System**: Add/remove Audio, Particles, Animator to any object
 
 ### Scripting (Optional)
 - **Python Integration**: pyo3-based scripting system
@@ -155,8 +174,41 @@ cargo run --example editor
 ### Creating Objects
 
 1. Use the toolbar buttons: **+ Cube**, **+ Empty**, **+ Camera**
-2. Or right-click in hierarchy for context menu
+2. Or use **Create** menu for more options:
+   - **Audio** > Audio Source, Audio Listener
+   - **Effects** > Particle Emitter (Fire, Smoke, Sparkles, Rain, Explosion)
+   - **Animation** > Animated Object
 3. Objects can be parented via drag-and-drop or context menu
+
+### Audio Components
+
+**Audio Source**: Add sound to any object
+1. Create > Audio > Audio Source (or Add Component in Inspector)
+2. Click "..." to select audio file (WAV, MP3, OGG, FLAC)
+3. Configure: Volume, Pitch, Looping, Spatial Audio
+4. Enable "Autoplay" for automatic playback on game start
+5. Click "Play" to preview in editor
+
+**Audio Listener**: Receive spatial audio
+1. Create > Audio > Audio Listener
+2. Usually attached to the main camera
+3. One active listener per scene
+
+### Particle Effects
+
+**Creating Particle Emitters**:
+1. Create > Effects > Particle Emitter > Choose preset
+2. Available presets: Fire, Smoke, Sparkles, Rain, Explosion
+3. Or choose "Custom" for manual configuration
+
+**Particle Settings**:
+- **Max Particles**: Maximum particles alive at once
+- **Spawn Rate**: Particles per second
+- **Lifetime**: Min/max particle lifetime
+- **Start/End Color**: Color gradient over lifetime
+- **Start/End Size**: Size change over lifetime
+- **Gravity**: Physics influence on particles
+- **Local Space**: Particles follow emitter when checked
 
 ### Parent-Child Hierarchy
 
@@ -630,6 +682,7 @@ cargo doc --open
 | `egui` | 0.33 | Immediate mode UI |
 | `serde` | 1.0 | Serialization framework |
 | `ron` | 0.8 | Rusty Object Notation |
+| `rodio` | 0.19 | Audio playback |
 | `ort` | 2.0 | ONNX Runtime (optional) |
 | `pyo3` | 0.27 | Python bindings (optional) |
 
@@ -660,16 +713,17 @@ cargo doc --open
 - [x] Resizable Asset Browser Panel
 - [x] Custom Shaders per Object (runtime compilation)
 - [x] Animated Shader Effects (time-based)
+- [x] GPU Particle System with Presets
+- [x] Audio System (rodio) with Editor Preview
+- [x] Audio/Particle Components in Editor
 
 ### Planned
 - [ ] Instanced mesh rendering
 - [ ] Shadow mapping
-- [ ] Audio system (rodio)
 - [ ] Network multiplayer
 - [ ] Asset hot-reloading
 - [ ] WebGPU/WASM support
-- [ ] Animation system
-- [ ] Particle effects
+- [ ] Skeletal Animation system
 
 ## Contributing
 

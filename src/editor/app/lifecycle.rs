@@ -1,20 +1,17 @@
 //! App trait implementation: init, events, update, render.
 
-use glam::{Mat4, Vec3};
+use glam::Mat4;
 use std::sync::Arc;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window as WinitWindow, WindowId};
 
-use super::state::FileDialogAction;
 use super::EditorApp;
-use crate::editor::game_window::{GameSettings, GameWindow};
 use crate::editor::gizmos::GizmoMode;
 use crate::editor::panels::Tool;
-use crate::editor::selection::SceneObject;
 use crate::editor::shortcuts::EditorAction;
 use crate::editor::viewport::{ObjectRenderData, Viewport};
-use crate::render::{App, AppEvent, EguiIntegration, IsometricCamera, RenderContext};
+use crate::render::{App, AppEvent, EguiIntegration, RenderContext};
 
 impl EditorApp {
     /// Get model matrices, colors, and textures for rendering (uses world transforms)
@@ -68,10 +65,24 @@ impl App for EditorApp {
 
         let viewport = Viewport::new(&ctx, egui.renderer_mut(), viewport_width, viewport_height);
 
+        // Set camera aspect ratio to match initial viewport
+        self.camera.aspect_ratio = viewport_width as f32 / viewport_height as f32;
+        self.last_viewport_size = (viewport_width as f32, viewport_height as f32);
+
+        // Initialize particle manager for editor preview
+        // Uses Rgba8UnormSrgb format to match viewport texture
+        let particle_manager = crate::particles::ParticleManager::new(
+            &ctx.device,
+            &ctx.queue,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+        );
+
         self.ctx = Some(ctx);
         self.egui = Some(egui);
         self.viewport = Some(viewport);
         self.window = Some(window);
+        self.particle_manager = Some(particle_manager);
+        self.particles_dirty = true;
 
         log::info!("Editor ready!");
     }
@@ -150,6 +161,15 @@ impl App for EditorApp {
     }
 
     fn render(&mut self) {
+        // Sync particles if dirty (before borrowing ctx)
+        if self.particles_dirty {
+            self.sync_particles();
+        }
+
+        // Update particle transforms from scene objects (for moving emitters)
+        // Must be done before borrowing ctx to avoid borrow conflicts
+        self.update_particle_transforms();
+
         let Some(ctx) = &self.ctx else { return };
 
         let Ok((output, view)) = ctx.begin_frame() else {
@@ -158,10 +178,12 @@ impl App for EditorApp {
 
         // Update editor time for shader animations
         let now = std::time::Instant::now();
-        if let Some(last) = self.last_frame_instant {
-            let delta = now.duration_since(last).as_secs_f32();
-            self.editor_time += delta;
-        }
+        let delta = if let Some(last) = self.last_frame_instant {
+            now.duration_since(last).as_secs_f32()
+        } else {
+            1.0 / 60.0
+        };
+        self.editor_time += delta;
         self.last_frame_instant = Some(now);
 
         let mut encoder = ctx.create_encoder("Editor Frame");
@@ -179,6 +201,27 @@ impl App for EditorApp {
             }
         }
 
+        // Get camera info for particles
+        let view_proj = self.camera.view_projection_matrix();
+        let cam_pos = self.camera.position();
+        let cam_right = self.camera.right();
+        let cam_up = self.camera.up();
+
+        // Update particles
+        if let Some(particle_manager) = &mut self.particle_manager {
+            particle_manager.update(
+                &ctx.device,
+                &mut encoder,
+                &ctx.queue,
+                &mut self.particle_world,
+                view_proj,
+                cam_pos,
+                cam_right,
+                cam_up,
+                delta,
+            );
+        }
+
         // Render viewport
         if let Some(viewport) = &mut self.viewport {
             // Render regular objects as cubes
@@ -189,6 +232,34 @@ impl App for EditorApp {
                 &regular_objects,
                 self.editor_time,
             );
+
+            // Render particles
+            if let Some(particle_manager) = &self.particle_manager {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Viewport Particle Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &viewport.render_view,
+                        resolve_target: None,
+                        depth_slice: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &viewport.depth_view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+
+                particle_manager.render(&mut pass, &self.particle_world);
+            }
 
             // Render camera objects as wireframe pyramids
             viewport.render_camera_wireframes(ctx, &mut encoder, &self.camera, &camera_objects);
@@ -249,76 +320,7 @@ impl App for EditorApp {
     }
 
     fn handle_pending_windows(&mut self, event_loop: &ActiveEventLoop) {
-        // Create game window if requested
-        if self.pending_game_start {
-            self.pending_game_start = false;
-
-            // Save current scene state
-            self.saved_scene_state = self.scene_objects.clone();
-
-            // Build game settings from project config
-            let settings = if let Some(project) = &self.current_project {
-                GameSettings {
-                    window_width: project.config.window_width,
-                    window_height: project.config.window_height,
-                    splash_duration: project.config.splash_duration,
-                    background_color: project.config.background_color,
-                    show_fps: project.config.show_fps,
-                    vsync: project.config.vsync,
-                }
-            } else {
-                GameSettings::default()
-            };
-
-            // Create game window
-            match pollster::block_on(GameWindow::new(
-                event_loop,
-                self.scene_objects.clone(),
-                settings,
-            )) {
-                Ok(game_window) => {
-                    game_window.window.request_redraw();
-                    self.is_playing = true;
-                    self.play_time = 0.0;
-                    self.last_frame_instant = Some(std::time::Instant::now());
-                    log::info!("Game window created - play mode started");
-
-                    // Initialize scripts with game window objects
-                    #[cfg(feature = "scripting")]
-                    {
-                        use crate::scripting::ObjectTransform;
-
-                        // Sync script context with game window objects
-                        self.script_context.clear_objects();
-                        self.script_context.set_time(0.0);
-
-                        for obj in game_window.scene_objects() {
-                            let transform = ObjectTransform {
-                                position: obj.position.to_array(),
-                                rotation: obj.rotation.to_array(),
-                                scale: obj.scale.to_array(),
-                            };
-                            self.script_context.register_object(
-                                obj.id,
-                                obj.name.clone(),
-                                transform,
-                                obj.visible,
-                            );
-                        }
-
-                        // Call _ready on all scripts
-                        if let Err(e) = self.script_runtime.call_ready(&mut self.script_context) {
-                            log::error!("Script ready failed: {}", e);
-                        }
-                    }
-
-                    self.game_window = Some(game_window);
-                }
-                Err(e) => {
-                    log::error!("Failed to create game window: {}", e);
-                }
-            }
-        }
+        self.handle_game_window_creation(event_loop);
     }
 
     fn secondary_window_event(
@@ -327,112 +329,7 @@ impl App for EditorApp {
         window_id: WindowId,
         event: &WindowEvent,
     ) -> bool {
-        // Check if this is our game window
-        if let Some(game_window) = &mut self.game_window {
-            if game_window.id() == window_id {
-                match event {
-                    WindowEvent::CloseRequested => {
-                        self.stop_play_and_close_game_window();
-                        return true;
-                    }
-                    WindowEvent::Resized(size) => {
-                        game_window.resize(*size);
-                        return true;
-                    }
-                    WindowEvent::RedrawRequested => {
-                        // Update game state and get delta
-                        let _delta = game_window.update();
-                        #[cfg(feature = "scripting")]
-                        let delta = _delta;
-                        #[cfg(feature = "scripting")]
-                        let play_time = game_window.play_time();
-
-                        // Run scripts
-                        #[cfg(feature = "scripting")]
-                        {
-                            use crate::scripting::ObjectTransform;
-
-                            // Sync script context with game window objects
-                            self.script_context.clear_objects();
-                            self.script_context.set_time(play_time);
-
-                            for obj in game_window.scene_objects() {
-                                let transform = ObjectTransform {
-                                    position: obj.position.to_array(),
-                                    rotation: obj.rotation.to_array(),
-                                    scale: obj.scale.to_array(),
-                                };
-                                self.script_context.register_object(
-                                    obj.id,
-                                    obj.name.clone(),
-                                    transform,
-                                    obj.visible,
-                                );
-                            }
-
-                            // Call _update on all scripts
-                            if let Err(e) = self
-                                .script_runtime
-                                .call_update(&mut self.script_context, delta)
-                            {
-                                log::error!("Script update failed: {}", e);
-                            }
-
-                            // Apply script changes back to game window objects
-                            for (id, new_pos) in self.script_context.drain_position_changes() {
-                                if let Some(obj) = game_window
-                                    .scene_objects_mut()
-                                    .iter_mut()
-                                    .find(|o| o.id == id)
-                                {
-                                    obj.position = glam::Vec3::from_array(new_pos);
-                                }
-                            }
-                            for (id, new_rot) in self.script_context.drain_rotation_changes() {
-                                if let Some(obj) = game_window
-                                    .scene_objects_mut()
-                                    .iter_mut()
-                                    .find(|o| o.id == id)
-                                {
-                                    obj.rotation = glam::Vec3::from_array(new_rot);
-                                }
-                            }
-                            for (id, new_scale) in self.script_context.drain_scale_changes() {
-                                if let Some(obj) = game_window
-                                    .scene_objects_mut()
-                                    .iter_mut()
-                                    .find(|o| o.id == id)
-                                {
-                                    obj.scale = glam::Vec3::from_array(new_scale);
-                                }
-                            }
-                        }
-
-                        // Render
-                        if let Err(e) = game_window.render() {
-                            log::error!("Game window render failed: {:?}", e);
-                        }
-
-                        // Request next frame
-                        game_window.window.request_redraw();
-                        return true;
-                    }
-                    WindowEvent::KeyboardInput { event, .. } => {
-                        // ESC closes game window
-                        if event.state == winit::event::ElementState::Pressed {
-                            if let winit::keyboard::Key::Named(winit::keyboard::NamedKey::Escape) =
-                                event.logical_key
-                            {
-                                self.stop_play_and_close_game_window();
-                                return true;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        false
+        self.handle_game_window_event(window_id, event)
     }
 
     fn main_window_id(&self) -> Option<WindowId> {
@@ -441,88 +338,104 @@ impl App for EditorApp {
 }
 
 impl EditorApp {
-    /// Handle editor action from shortcuts
-    fn handle_editor_action(&mut self, action: EditorAction) {
-        match action {
-            EditorAction::Undo => self.undo(),
-            EditorAction::Redo => self.redo(),
-            EditorAction::Delete => {
-                if let Some(id) = self.selection.first() {
-                    self.delete_object(id);
+    /// Sync particle emitters from scene objects to particle world
+    pub(crate) fn sync_particles(&mut self) {
+        use crate::editor::components::ParticlePreset;
+        use crate::math::Transform;
+        use crate::particles::{presets, EmitterConfig, ParticleEmitter};
+        use glam::Vec4;
+
+        // Clear existing particle world and entity mapping
+        self.particle_world.clear();
+        self.particle_entity_map.clear();
+
+        // Convert each scene object with particle_emitter to ECS entity
+        for obj in &self.scene_objects {
+            if let Some(ref emitter_comp) = obj.particle_emitter {
+                if !emitter_comp.enabled {
+                    continue;
                 }
+
+                // Convert editor component to runtime config
+                let base_config = match emitter_comp.preset {
+                    ParticlePreset::Fire => presets::fire(),
+                    ParticlePreset::Smoke => presets::smoke(),
+                    ParticlePreset::Sparkles => presets::sparkles(),
+                    ParticlePreset::Rain => presets::rain(),
+                    ParticlePreset::Explosion => presets::explosion(),
+                    ParticlePreset::Custom => EmitterConfig::new("Custom")
+                        .with_max_particles(emitter_comp.max_particles)
+                        .with_lifetime(emitter_comp.lifetime_min, emitter_comp.lifetime_max)
+                        .with_spawn_rate(emitter_comp.spawn_rate)
+                        .with_gravity(glam::Vec3::new(
+                            emitter_comp.gravity[0],
+                            emitter_comp.gravity[1],
+                            emitter_comp.gravity[2],
+                        ))
+                        .with_colors(
+                            Vec4::new(
+                                emitter_comp.start_color[0],
+                                emitter_comp.start_color[1],
+                                emitter_comp.start_color[2],
+                                emitter_comp.start_color[3],
+                            ),
+                            Vec4::new(
+                                emitter_comp.end_color[0],
+                                emitter_comp.end_color[1],
+                                emitter_comp.end_color[2],
+                                emitter_comp.end_color[3],
+                            ),
+                        )
+                        .with_sizes(emitter_comp.start_size, emitter_comp.end_size),
+                };
+
+                // Apply local_space setting from editor component
+                let config = base_config.with_local_space(emitter_comp.local_space);
+
+                // Create runtime emitter
+                let emitter = ParticleEmitter::new(config);
+
+                // Create transform from scene object (use world position)
+                let world_pos = obj.world_position(&self.scene_objects);
+                let transform = Transform::from_xyz(world_pos.x, world_pos.y, world_pos.z);
+
+                // Spawn entity in particle world and store the mapping
+                let entity = self
+                    .particle_world
+                    .spawn()
+                    .with(transform)
+                    .with(emitter)
+                    .build();
+
+                // Store mapping from scene object ID to ECS entity
+                self.particle_entity_map.insert(obj.id, entity);
             }
-            EditorAction::Duplicate => {
-                if let Some(id) = self.selection.first() {
-                    self.duplicate_object(id);
-                }
-            }
-            EditorAction::SelectTool => self.toolbar_panel.current_tool = Tool::Select,
-            EditorAction::MoveTool => self.toolbar_panel.current_tool = Tool::Move,
-            EditorAction::RotateTool => self.toolbar_panel.current_tool = Tool::Rotate,
-            EditorAction::ScaleTool => self.toolbar_panel.current_tool = Tool::Scale,
-            EditorAction::FocusSelected => {
-                if let Some(id) = self.selection.first() {
-                    self.focus_on_object(id);
-                }
-            }
-            EditorAction::FrameAll => {
-                self.camera.target = Vec3::ZERO;
-                self.camera.distance = 30.0;
-            }
-            EditorAction::ResetCamera => {
-                self.camera = IsometricCamera::default();
-            }
-            EditorAction::TopView => {
-                self.camera.pitch = -89.0_f32.to_radians();
-                self.camera.yaw = 0.0;
-            }
-            EditorAction::FrontView => {
-                self.camera.pitch = 0.0;
-                self.camera.yaw = 0.0;
-            }
-            EditorAction::SideView => {
-                self.camera.pitch = 0.0;
-                self.camera.yaw = 90.0_f32.to_radians();
-            }
-            EditorAction::NewScene => self.new_scene(),
-            EditorAction::SaveScene => {
-                if let Some(path) = self.scene_manager.current_path() {
-                    self.save_scene(path.to_path_buf());
-                }
-            }
-            EditorAction::SaveSceneAs => {
-                self.file_dialog_action = Some(FileDialogAction::SaveAs);
-            }
-            EditorAction::OpenScene => {
-                self.file_dialog_action = Some(FileDialogAction::Open);
-            }
-            EditorAction::ToggleVisibility => {
-                if let Some(id) = self.selection.first() {
-                    if let Some(obj) = self.scene_objects.iter_mut().find(|o| o.id == id) {
-                        obj.visible = !obj.visible;
-                    }
-                }
-            }
-            EditorAction::CreateCube => {
-                let obj = SceneObject::cube(self.next_id, Vec3::new(0.0, 0.5, 0.0));
-                self.next_id += 1;
-                self.create_object(obj);
-            }
-            EditorAction::Cut => self.cut_selected(),
-            EditorAction::Copy => self.copy_selected(),
-            EditorAction::Paste => self.paste(),
-            EditorAction::SelectAll => {
-                // Select all visible objects
-                for obj in &self.scene_objects {
-                    if obj.visible {
-                        self.selection.add(obj.id);
-                    }
-                }
-            }
-            EditorAction::TogglePlay => {
-                self.toggle_play();
-            }
-            _ => {} // Other actions not yet implemented
         }
+
+        self.particles_dirty = false;
+    }
+
+    /// Update particle emitter transforms from scene objects
+    /// Called every frame to sync positions when objects move
+    pub(crate) fn update_particle_transforms(&mut self) {
+        use crate::math::Transform;
+
+        // Update transforms for all mapped entities
+        for obj in &self.scene_objects {
+            if let Some(&entity) = self.particle_entity_map.get(&obj.id) {
+                if let Some(transform) = self.particle_world.get_mut::<Transform>(entity) {
+                    let world_pos = obj.world_position(&self.scene_objects);
+                    transform.position =
+                        crate::math::Position::new(world_pos.x, world_pos.y, world_pos.z);
+                }
+            }
+        }
+    }
+
+    /// Mark particles as needing re-sync
+    /// Called when particle emitters are added/modified in the scene
+    #[allow(dead_code)]
+    pub(crate) fn mark_particles_dirty(&mut self) {
+        self.particles_dirty = true;
     }
 }

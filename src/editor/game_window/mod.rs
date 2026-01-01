@@ -12,9 +12,15 @@ use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 use winit::window::WindowAttributes;
 
+use crate::audio::AudioManager;
+use crate::core::World;
+use crate::editor::components::ParticlePreset;
 use crate::editor::selection::SceneObject;
 use crate::editor::viewport::ShaderCache;
+use crate::math::Transform;
+use crate::particles::{presets, EmitterConfig, ParticleEmitter, ParticleManager};
 use crate::render::{EguiIntegration, GpuMesh, Mesh, RenderContext, Texture, Uniforms};
+use glam::Vec4;
 
 /// Cached texture for game window
 pub(crate) struct GameTexture {
@@ -110,6 +116,20 @@ pub struct GameWindow {
     pub(crate) texture_cache: HashMap<String, GameTexture>,
     /// Shader cache for custom shaders
     pub(crate) shader_cache: ShaderCache,
+    /// Particle manager for GPU particle systems
+    pub(crate) particle_manager: ParticleManager,
+    /// ECS World for runtime particle components
+    pub(crate) particle_world: World,
+    /// Audio manager for sound playback
+    pub(crate) audio_manager: Option<AudioManager>,
+    /// Active audio sinks per object ID (object_id -> sink_id)
+    pub(crate) audio_sinks: HashMap<u32, u64>,
+    /// Loaded audio clips cache (path -> clip_id)
+    pub(crate) audio_clips: HashMap<String, u32>,
+    /// Mapping from SceneObject ID to particle Entity for transform updates
+    pub(crate) particle_entity_map: HashMap<u32, crate::core::Entity>,
+    /// Whether audio has been initialized (delayed until after splash)
+    pub(crate) audio_initialized: bool,
 }
 
 impl GameWindow {
@@ -358,6 +378,12 @@ impl GameWindow {
         let shader_cache =
             ShaderCache::new(&ctx.device, mesh_bind_group_layout.clone(), ctx.format());
 
+        // Create particle manager
+        let particle_manager = ParticleManager::new(&ctx.device, &ctx.queue, ctx.format());
+
+        // Create ECS world for particles
+        let particle_world = World::new();
+
         // Preload textures for scene objects
         let mut texture_cache = HashMap::new();
         for obj in &scene_objects {
@@ -381,7 +407,19 @@ impl GameWindow {
             }
         }
 
-        Ok(Self {
+        // Initialize audio manager
+        let audio_manager = match AudioManager::new() {
+            Ok(am) => {
+                log::info!("Game: Audio manager initialized");
+                Some(am)
+            }
+            Err(e) => {
+                log::warn!("Game: Failed to initialize audio: {}", e);
+                None
+            }
+        };
+
+        let mut game_window = Self {
             window,
             ctx,
             aspect_ratio,
@@ -407,7 +445,21 @@ impl GameWindow {
             current_fps: 60.0,
             texture_cache,
             shader_cache,
-        })
+            particle_manager,
+            particle_world,
+            audio_manager,
+            audio_sinks: HashMap::new(),
+            audio_clips: HashMap::new(),
+            particle_entity_map: HashMap::new(),
+            audio_initialized: false,
+        };
+
+        // Initialize particle emitters from scene objects
+        game_window.init_particle_emitters();
+
+        // Note: Audio is initialized after splash screen ends (see check_and_init_audio)
+
+        Ok(game_window)
     }
 
     /// Get window ID
@@ -487,8 +539,186 @@ impl GameWindow {
         self.play_time
     }
 
+    /// Initialize particle emitters from scene objects
+    fn init_particle_emitters(&mut self) {
+        self.particle_entity_map.clear();
+
+        for obj in &self.scene_objects {
+            if let Some(ref emitter_comp) = obj.particle_emitter {
+                if !emitter_comp.enabled {
+                    continue;
+                }
+
+                // Convert editor component to runtime config
+                let config = convert_particle_component_to_config(emitter_comp);
+
+                // Create runtime emitter
+                let emitter = ParticleEmitter::new(config);
+
+                // Create transform from scene object
+                let transform = Transform::from_xyz(obj.position.x, obj.position.y, obj.position.z);
+
+                // Spawn entity in particle world and store mapping
+                let entity = self
+                    .particle_world
+                    .spawn()
+                    .with(transform)
+                    .with(emitter)
+                    .build();
+
+                // Store mapping from scene object ID to ECS entity
+                self.particle_entity_map.insert(obj.id, entity);
+            }
+        }
+
+        log::info!(
+            "Game: Initialized {} particle emitters",
+            self.particle_world.entity_count()
+        );
+    }
+
+    /// Update particle emitter transforms from scene objects
+    /// Called every frame to sync positions when objects move via scripts
+    pub fn update_particle_transforms(&mut self) {
+        for obj in &self.scene_objects {
+            if let Some(&entity) = self.particle_entity_map.get(&obj.id) {
+                if let Some(transform) = self.particle_world.get_mut::<Transform>(entity) {
+                    transform.position =
+                        crate::math::Position::new(obj.position.x, obj.position.y, obj.position.z);
+                }
+            }
+        }
+    }
+
+    /// Check and initialize audio after splash screen ends
+    pub fn check_and_init_audio(&mut self) {
+        if !self.audio_initialized && !self.in_splash {
+            self.init_audio_sources();
+            self.audio_initialized = true;
+        }
+    }
+
     /// Close the window
     pub fn close(&mut self) {
         self.is_open = false;
+        self.stop_all_audio();
     }
+
+    /// Initialize audio sources with autoplay
+    fn init_audio_sources(&mut self) {
+        let Some(audio_manager) = &mut self.audio_manager else {
+            return;
+        };
+
+        let mut started_count = 0;
+
+        // Collect autoplay audio sources
+        let autoplay_sources: Vec<(u32, String, f32, f32, bool)> = self
+            .scene_objects
+            .iter()
+            .filter_map(|obj| {
+                obj.audio_source.as_ref().and_then(|audio| {
+                    if audio.autoplay && audio.clip_path.is_some() {
+                        Some((
+                            obj.id,
+                            audio.clip_path.clone().unwrap(),
+                            audio.volume,
+                            audio.pitch,
+                            audio.looping,
+                        ))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .collect();
+
+        // Start autoplay audio sources
+        for (obj_id, path, volume, pitch, looping) in autoplay_sources {
+            // Load clip if not cached
+            let clip_id = if let Some(&id) = self.audio_clips.get(&path) {
+                id
+            } else {
+                match audio_manager.load_clip(&path) {
+                    Ok(id) => {
+                        self.audio_clips.insert(path.clone(), id);
+                        id
+                    }
+                    Err(e) => {
+                        log::error!("Failed to load audio clip {}: {}", path, e);
+                        continue;
+                    }
+                }
+            };
+
+            // Play the clip
+            match audio_manager.play(clip_id, obj_id, volume, pitch, looping, false) {
+                Ok(sink_id) => {
+                    self.audio_sinks.insert(obj_id, sink_id);
+                    started_count += 1;
+                    log::info!("Game: Started audio {} for object {}", path, obj_id);
+                }
+                Err(e) => {
+                    log::error!("Failed to play audio: {}", e);
+                }
+            }
+        }
+
+        if started_count > 0 {
+            log::info!("Game: Started {} autoplay audio sources", started_count);
+        }
+    }
+
+    /// Stop all audio playback
+    fn stop_all_audio(&mut self) {
+        if let Some(audio_manager) = &mut self.audio_manager {
+            audio_manager.stop_all();
+            self.audio_sinks.clear();
+            log::info!("Game: Stopped all audio");
+        }
+    }
+}
+
+/// Convert editor ParticleEmitterComponent to runtime EmitterConfig
+fn convert_particle_component_to_config(
+    comp: &crate::editor::components::ParticleEmitterComponent,
+) -> EmitterConfig {
+    // Use preset if not Custom, then apply local_space setting
+    let base_config = match comp.preset {
+        ParticlePreset::Fire => presets::fire(),
+        ParticlePreset::Smoke => presets::smoke(),
+        ParticlePreset::Sparkles => presets::sparkles(),
+        ParticlePreset::Rain => presets::rain(),
+        ParticlePreset::Explosion => presets::explosion(),
+        ParticlePreset::Custom => {
+            // Build custom config from component values
+            EmitterConfig::new("Custom")
+                .with_max_particles(comp.max_particles)
+                .with_lifetime(comp.lifetime_min, comp.lifetime_max)
+                .with_spawn_rate(comp.spawn_rate)
+                .with_gravity(glam::Vec3::new(
+                    comp.gravity[0],
+                    comp.gravity[1],
+                    comp.gravity[2],
+                ))
+                .with_colors(
+                    Vec4::new(
+                        comp.start_color[0],
+                        comp.start_color[1],
+                        comp.start_color[2],
+                        comp.start_color[3],
+                    ),
+                    Vec4::new(
+                        comp.end_color[0],
+                        comp.end_color[1],
+                        comp.end_color[2],
+                        comp.end_color[3],
+                    ),
+                )
+                .with_sizes(comp.start_size, comp.end_size)
+        }
+    };
+
+    // Apply local_space setting from editor component
+    base_config.with_local_space(comp.local_space)
 }

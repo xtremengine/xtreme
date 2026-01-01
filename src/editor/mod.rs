@@ -36,6 +36,7 @@ mod panels;
 mod prefab;
 pub mod project;
 mod scene;
+mod scene_object;
 mod selection;
 mod shortcuts;
 mod snap;

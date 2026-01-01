@@ -14,7 +14,7 @@ pub mod toolbar;
 pub use asset_browser::{AssetAction, AssetBrowser, AssetEntry, AssetType};
 pub use camera_settings::draw_camera_settings;
 pub use hierarchy::{HierarchyAction, HierarchyPanel};
-pub use inspector::InspectorPanel;
+pub use inspector::{AudioAction, InspectorPanel};
 #[cfg(feature = "scripting")]
 pub use scripts::draw_scripts_section;
 #[cfg(feature = "scripting")]

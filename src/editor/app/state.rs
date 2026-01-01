@@ -1,9 +1,12 @@
 //! Editor application state and initialization.
 
 use glam::Vec3;
+use std::collections::HashMap;
 use std::sync::Arc;
 use winit::window::Window as WinitWindow;
 
+use crate::audio::AudioManager;
+use crate::core::{Entity, World};
 use crate::editor::commands::CommandHistory;
 use crate::editor::game_window::GameWindow;
 use crate::editor::gizmos::Gizmo;
@@ -14,6 +17,7 @@ use crate::editor::selection::{SceneObject, Selection};
 use crate::editor::shortcuts::ShortcutManager;
 use crate::editor::snap::SnapSettings;
 use crate::editor::viewport::Viewport;
+use crate::particles::ParticleManager;
 use crate::render::{EguiIntegration, IsometricCamera, RenderContext};
 #[cfg(feature = "scripting")]
 use crate::scripting::{ScriptContext, ScriptRuntime};
@@ -135,6 +139,18 @@ pub struct EditorApp {
     pub(crate) pending_game_start: bool,
     /// Height of hierarchy panel for resizable split
     pub(crate) hierarchy_height: f32,
+    /// Particle manager for editor preview
+    pub(crate) particle_manager: Option<ParticleManager>,
+    /// ECS World for editor particle systems
+    pub(crate) particle_world: World,
+    /// Whether particles need re-sync with scene
+    pub(crate) particles_dirty: bool,
+    /// Mapping from SceneObject ID to particle Entity for transform updates
+    pub(crate) particle_entity_map: HashMap<u32, Entity>,
+    /// Audio manager for sound playback
+    pub(crate) audio_manager: Option<AudioManager>,
+    /// Currently playing audio preview (clip_path -> sink_id)
+    pub(crate) audio_preview_sink: Option<u64>,
 }
 
 impl EditorApp {
@@ -207,6 +223,12 @@ impl EditorApp {
             game_window: None,
             pending_game_start: false,
             hierarchy_height: 300.0,
+            particle_manager: None,
+            particle_world: World::new(),
+            particles_dirty: true,
+            particle_entity_map: HashMap::new(),
+            audio_manager: AudioManager::new().ok(),
+            audio_preview_sink: None,
         }
     }
 }

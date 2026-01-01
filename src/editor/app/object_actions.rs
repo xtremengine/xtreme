@@ -10,6 +10,9 @@ use crate::editor::selection::SceneObject;
 impl EditorApp {
     /// Create a new scene object
     pub fn create_object(&mut self, obj: SceneObject) {
+        // Check if this is a particle emitter
+        let has_particles = obj.particle_emitter.is_some();
+
         // Record command for undo
         let cmd = Command::Create {
             object_id: obj.id,
@@ -26,6 +29,12 @@ impl EditorApp {
         let id = obj.id;
         self.scene_objects.push(obj);
         self.selection.select(id);
+
+        // Mark particles dirty if we added a particle emitter
+        if has_particles {
+            self.particles_dirty = true;
+        }
+
         log::info!("Created object {}", id);
     }
 
@@ -57,6 +66,14 @@ impl EditorApp {
 
     /// Delete a single object (no cascade)
     fn delete_single_object(&mut self, id: u32) {
+        // Check if this object has particles before deleting
+        let has_particles = self
+            .scene_objects
+            .iter()
+            .find(|o| o.id == id)
+            .map(|o| o.particle_emitter.is_some())
+            .unwrap_or(false);
+
         // Record command for undo
         if let Some(obj) = self.scene_objects.iter().find(|o| o.id == id) {
             let cmd = Command::Delete {
@@ -74,6 +91,12 @@ impl EditorApp {
 
         self.scene_objects.retain(|o| o.id != id);
         self.selection.remove(id);
+
+        // Mark particles dirty if we deleted a particle emitter
+        if has_particles {
+            self.particles_dirty = true;
+        }
+
         log::info!("Deleted object {}", id);
     }
 

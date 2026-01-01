@@ -2,13 +2,13 @@
 
 **Date:** 2025-12-31
 **Type:** Refactoring
-**Status:** Completed (Phase 1)
+**Status:** Completed (Phase 1 & 2)
 
 ## Objective
 
-Reduce `src/editor/app/ui.rs` from 698 lines to under 500 lines by extracting functionality into separate modules.
+Reduce editor files from >500 lines to under 500 lines by extracting functionality into separate modules.
 
-## Changes Made
+## Phase 1: UI Refactoring
 
 ### New Files Created
 
@@ -19,32 +19,43 @@ Reduce `src/editor/app/ui.rs` from 698 lines to under 500 lines by extracting fu
 | `src/editor/panels/snap_settings.rs` | Snap settings UI | 55 |
 | `src/editor/panels/scripts.rs` | Scripts section UI | 83 |
 
-### Files Modified
-
-| File | Change |
-|------|--------|
-| `src/editor/app/mod.rs` | Added `mod templates` |
-| `src/editor/app/ui.rs` | Removed templates + camera/snap/scripts code |
-| `src/editor/panels/mod.rs` | Added new module exports |
-
-## Results
+### Results
 
 - **Before:** `ui.rs` had 698 lines
 - **After:** `ui.rs` has 486 lines
 - **Reduction:** 212 lines (30%)
 
-## Remaining Work (Future)
+## Phase 2: Viewport & Inspector Refactoring
 
-The following files still exceed 500 lines and could be refactored in a future iteration:
+### Viewport Changes
 
-| File | Lines | Potential Refactoring |
-|------|-------|----------------------|
-| `editor/viewport/mod.rs` | 682 | Extract pipeline initialization |
-| `editor/panels/inspector.rs` | 558 | Split by component type |
-| `editor/app/lifecycle.rs` | 528 | Extract state management |
-| `editor/viewport/render.rs` | 522 | Already well-scoped |
+| File | Before | After |
+|------|--------|-------|
+| `viewport/mod.rs` | 682 | 271 |
+| `viewport/pipelines.rs` | - | 479 (new) |
+
+### Inspector Changes
+
+Converted `inspector.rs` (558 lines) to submodule:
+
+| File | Lines |
+|------|-------|
+| `inspector/mod.rs` | 148 |
+| `inspector/transform.rs` | 162 |
+| `inspector/material.rs` | 122 |
+| `inspector/camera.rs` | 168 |
+
+## Final Status
+
+| File | Before | After | Status |
+|------|--------|-------|--------|
+| `ui.rs` | 698 | 486 | ✅ |
+| `viewport/mod.rs` | 682 | 271 | ✅ |
+| `inspector.rs` | 558 | 148 | ✅ |
+| `lifecycle.rs` | 528 | 528 | ⚠️ Close to limit |
 
 ## Testing
 
 - `cargo check` passes without warnings
+- `cargo fmt` applied
 - Build successful

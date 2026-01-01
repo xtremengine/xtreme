@@ -71,6 +71,10 @@ impl EditorApp {
                 camera: obj.camera.clone(),
                 texture_path: obj.texture_path.clone(),
                 shader_path: obj.shader_path.clone(),
+                audio_source: obj.audio_source.clone(),
+                audio_listener: obj.audio_listener.clone(),
+                particle_emitter: obj.particle_emitter.clone(),
+                animator: obj.animator.clone(),
             });
         }
 
@@ -117,6 +121,10 @@ impl EditorApp {
                     obj.camera = obj_data.camera.clone();
                     obj.texture_path = obj_data.texture_path.clone();
                     obj.shader_path = obj_data.shader_path.clone();
+                    obj.audio_source = obj_data.audio_source.clone();
+                    obj.audio_listener = obj_data.audio_listener.clone();
+                    obj.particle_emitter = obj_data.particle_emitter.clone();
+                    obj.animator = obj_data.animator.clone();
 
                     parent_indices.push(obj_data.parent_index);
                     self.scene_objects.push(obj);
@@ -187,6 +195,16 @@ impl EditorApp {
                 }
 
                 self.scene_manager.set_path(path.clone());
+
+                // Mark particles dirty if any objects have particle emitters
+                if self
+                    .scene_objects
+                    .iter()
+                    .any(|o| o.particle_emitter.is_some())
+                {
+                    self.particles_dirty = true;
+                }
+
                 log::info!("Scene loaded from {:?}", path);
             }
             Err(e) => {

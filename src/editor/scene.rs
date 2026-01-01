@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-use super::components::CameraComponent;
+use super::components::{
+    AnimatorComponent, AudioListenerComponent, AudioSourceComponent, CameraComponent,
+    ParticleEmitterComponent,
+};
 
 /// Serializable scene object
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -42,6 +45,18 @@ pub struct SceneObjectData {
     /// Shader path (relative to project, .wgsl file)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shader_path: Option<String>,
+    /// Audio source component (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub audio_source: Option<AudioSourceComponent>,
+    /// Audio listener component (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub audio_listener: Option<AudioListenerComponent>,
+    /// Particle emitter component (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub particle_emitter: Option<ParticleEmitterComponent>,
+    /// Animator component (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub animator: Option<AnimatorComponent>,
 }
 
 impl SceneObjectData {
@@ -284,6 +299,10 @@ mod tests {
             camera: None,
             texture_path: None,
             shader_path: None,
+            audio_source: None,
+            audio_listener: None,
+            particle_emitter: None,
+            animator: None,
         });
 
         let temp = NamedTempFile::new().unwrap();

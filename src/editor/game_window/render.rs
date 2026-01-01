@@ -2,11 +2,12 @@
 
 use crate::render::Uniforms;
 
+use super::camera::CameraInfo;
 use super::{GameWindow, MAX_OBJECTS};
 
 impl GameWindow {
     /// Render the game
-    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, delta_time: f32) -> Result<(), wgpu::SurfaceError> {
         // Check if splash screen is done
         if self.in_splash && self.play_time >= self.settings.splash_duration {
             self.in_splash = false;
@@ -25,15 +26,20 @@ impl GameWindow {
                 label: Some("Game Render Encoder"),
             });
 
-        // Get camera view_projection matrix and clear color
-        let (view_proj, camera_clear_color) = self.get_camera_view_projection();
+        // Get camera info for rendering
+        let camera_info = self.get_camera_info();
 
         // Calculate background color
-        let bg = self.calculate_background_color(camera_clear_color);
+        let bg = self.calculate_background_color(camera_info.clear_color);
         let (r, g, b) = self.apply_splash_fade(bg);
 
         // Update uniforms
-        let num_objects = self.update_uniforms(view_proj);
+        let num_objects = self.update_uniforms(camera_info.view_proj);
+
+        // Update particles (compute shader pass)
+        if !self.in_splash {
+            self.update_particles(&mut encoder, &camera_info, delta_time);
+        }
 
         // Clear pass
         self.render_clear_pass(&mut encoder, &view, r, g, b);
@@ -43,6 +49,11 @@ impl GameWindow {
             self.render_objects(&mut encoder, &view, num_objects);
         }
 
+        // Render particles
+        if !self.in_splash {
+            self.render_particles(&mut encoder, &view);
+        }
+
         // Render egui overlays
         self.render_overlays(&mut encoder, &view);
 
@@ -50,6 +61,55 @@ impl GameWindow {
         output.present();
 
         Ok(())
+    }
+
+    /// Update particle systems (compute pass)
+    fn update_particles(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        camera_info: &CameraInfo,
+        delta_time: f32,
+    ) {
+        self.particle_manager.update(
+            &self.ctx.device,
+            encoder,
+            &self.ctx.queue,
+            &mut self.particle_world,
+            camera_info.view_proj,
+            camera_info.position,
+            camera_info.right,
+            camera_info.up,
+            delta_time,
+        );
+    }
+
+    /// Render particles
+    fn render_particles(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Game Particle Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+
+        self.particle_manager
+            .render(&mut pass, &self.particle_world);
     }
 
     /// Calculate background color from camera or settings

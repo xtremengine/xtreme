@@ -27,7 +27,7 @@ path = "examples/editor.rs"
 # Rendering
 wgpu = "27"
 winit = "0.30"
-glam = { version = "0.29", features = ["bytemuck"] }
+glam = { version = "0.29", features = ["bytemuck", "serde"] }
 bytemuck = { version = "1.19", features = ["derive"] }
 
 # Editor UI
@@ -46,6 +46,13 @@ ort = { version = "2.0.0-rc.10", optional = true }
 # Python Scripting
 pyo3 = { version = "0.27", features = ["auto-initialize"], optional = true }
 
+# Audio
+rodio = { version = "0.19", features = ["symphonia-all"] }
+cpal = "0.15"
+
+# Animation
+gltf = "1.4"
+
 # Utilities
 log = "0.4"
 env_logger = "0.11"
@@ -53,6 +60,7 @@ thiserror = "2.0"
 image = "0.25"
 rfd = "0.15"
 tobj = "4.0"
+rand = "0.8"
 
 # Async runtime (required by wgpu)
 pollster = "0.4"

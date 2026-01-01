@@ -33,10 +33,13 @@
 //! ```
 
 pub mod ai;
+pub mod animation;
+pub mod audio;
 pub mod core;
 pub mod editor;
 pub mod input;
 pub mod math;
+pub mod particles;
 pub mod physics;
 pub mod render;
 pub mod scripting;
@@ -44,9 +47,23 @@ pub mod utils;
 
 /// Prelude module - commonly used types
 pub mod prelude {
+    // Core ECS
     pub use crate::core::{Component, Entity, World};
+
+    // Math
     pub use crate::math::Transform;
+
+    // Rendering
     pub use crate::render::{Camera, Material, Mesh};
+
+    // Audio
+    pub use crate::audio::{AudioListener, AudioManager, AudioSource};
+
+    // Animation
+    pub use crate::animation::{AnimationClip, AnimationLibrary, Animator, Skeleton, SkeletonPose};
+
+    // Particles
+    pub use crate::particles::{EmitterConfig, ParticleEmitter, ParticleManager};
 }
 
 /// Engine version

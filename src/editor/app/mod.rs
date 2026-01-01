@@ -11,18 +11,24 @@
 //! - `dialogs.rs` - Dialog windows
 //! - `splash.rs` - Splash screen
 //! - `lifecycle.rs` - App trait implementation
+//! - `shortcuts_handler.rs` - Keyboard shortcut action handling
+//! - `game_events.rs` - Game window event handling
 
 mod actions;
+mod audio_preview;
 mod clipboard;
 mod dialogs;
+mod game_events;
 mod history;
 mod input;
 mod lifecycle;
 mod menu;
+mod menu_file;
 mod object_actions;
 mod play_mode;
 mod prefab_actions;
 mod scene_io;
+mod shortcuts_handler;
 mod splash;
 mod state;
 pub mod templates;

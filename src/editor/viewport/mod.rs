@@ -7,8 +7,10 @@
 //! - `textures.rs` - Texture creation helpers
 //! - `pipelines.rs` - Pipeline creation helpers
 //! - `render.rs` - Rendering methods
+//! - `gizmo_render.rs` - Gizmo and wireframe rendering
 //! - `shader_cache.rs` - Custom shader caching
 
+mod gizmo_render;
 mod pipelines;
 mod render;
 mod shader_cache;
