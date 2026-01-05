@@ -48,7 +48,7 @@ pyo3 = { version = "0.27", features = ["auto-initialize"], optional = true }
 
 # Audio
 rodio = { version = "0.19", features = ["symphonia-all"] }
-cpal = "0.15"
+cpal = "0.17"
 
 # Animation
 gltf = "1.4"
