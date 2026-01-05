@@ -47,7 +47,7 @@ ort = { version = "2.0.0-rc.10", optional = true }
 pyo3 = { version = "0.27", features = ["auto-initialize"], optional = true }
 
 # Audio
-rodio = { version = "0.19", features = ["symphonia-all"] }
+rodio = { version = "0.21", features = ["symphonia-all"] }
 cpal = "0.15"
 
 # Animation
