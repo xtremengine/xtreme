@@ -44,7 +44,7 @@ ron = "0.8"
 ort = { version = "2.0.0-rc.10", optional = true }
 
 # Python Scripting
-pyo3 = { version = "0.27", features = ["auto-initialize"], optional = true }
+pyo3 = { version = "0.28", features = ["auto-initialize"], optional = true }
 
 # Audio
 rodio = { version = "0.19", features = ["symphonia-all"] }
