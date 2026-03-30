@@ -31,9 +31,9 @@ glam = { version = "0.29", features = ["bytemuck", "serde"] }
 bytemuck = { version = "1.19", features = ["derive"] }
 
 # Editor UI
-egui = "0.33.3"
-egui-wgpu = "0.33.3"
-egui-winit = "0.33.3"
+egui = "0.34.1"
+egui-wgpu = "0.34.1"
+egui-winit = "0.34.1"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
